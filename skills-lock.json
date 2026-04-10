@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "skills": {
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "computedHash": "642a177bee320618caa49f5106cadb4e7594c606e867f61ba7b56d19cf745cd5"
+    },
+    "swe:babysit-pr": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "f4cc2e4aeacd01e99967f3aa5fc4c6dd5894cdcdc522fb7533fdbf01081427e8"
+    },
+    "swe:capture-knowledge": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "f884f44f31eaa51405d022bba68488682a2a6e15eb48ffe820e6be21b199c23d"
+    },
+    "swe:change-validation-planner": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "9c7a7b772e00222fa29c289fecf9e31ad21a174902c8124472707a0c870a4d0b"
+    },
+    "swe:create-skill": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "2aea4cf1ddcbf2f0f055ba7a72b4217b75bb6683075d86e81c820638002b9633"
+    },
+    "swe:docs-drift-audit": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "81478ad21d9e5ad13733fd4a51b8a1136c254de9b67878268c2b1dde3a0d3aa4"
+    },
+    "swe:incident-followup-audit": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "de69253870ef566117a9eaa8edfe9eb4c2fb2a0aaf9d9684300d75770e498e5d"
+    },
+    "swe:init": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "d6ecb033cbf867cdf4575ba18413d70c7d323de72ef04aa30472031fe188bf0c"
+    },
+    "swe:merged-pr-monitoring": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "b33c151b2487984dfedd56011bffb84e83291547b50b688910b98fb9d556c8ce"
+    },
+    "swe:observability-gap-hunt": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "94090fd358f1385e21712a0936e1ce54f79e43fc4a0c6da2251caad03f5e3137"
+    },
+    "swe:ownership-risk-map": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "16bd99719f9f72f8f3d7b42fc5d8a37ca556204514995e67b135f8638a9e2330"
+    },
+    "swe:performance-hunt": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "503b5a03debdd1c8d6b88509d992595889b727bb403b6e0a2c19895bb61820e9"
+    },
+    "swe:pr-risk-review": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "46b7216bff1de62ec864a9ca12b53e4bc0ff4b34dbd217db284a44690a1a712e"
+    },
+    "swe:recent-commit-bug-hunt": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "78980997074ce725b015caaf0ba1b42df76adf009aa0fa544134f4e9b42d0c74"
+    },
+    "swe:refactor-opportunities": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "222e3fb318201a1136f925827ed9091a670f7125b614139a63eaf75d4aa55634"
+    },
+    "swe:repo-introspection": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "9fbf2d7dd3e472b53f655da88d27c926cdf4fd3cfcf8b11a1629f3b9106fe213"
+    },
+    "swe:security-audit": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "a3d47af3406219e9c300e2f7dded526de636e667c3c191873928cb503d94a60e"
+    },
+    "swe:test-gap-hunt": {
+      "source": "ckorhonen/swe-skills",
+      "sourceType": "github",
+      "computedHash": "155b3cf28a0f89ee9ea789e9e0f6d8c621a0df182635075f35533697f4f1de17"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "6337038fe1fe6bbe1b9f252ab678ee575859190bab6f0f246f4061824eb40875"
+    }
+  }
+}
