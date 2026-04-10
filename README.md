@@ -116,6 +116,27 @@ weble/
 - PostgreSQL 13+
 - Git
 
+### Quick Start - Backend Testing
+
+To quickly test the backend without a full setup:
+
+1. **Start the backend server:**
+   ```bash
+   cd backend
+   python -m uvicorn app.main:app --reload
+   ```
+   Server runs on `http://localhost:8000`
+
+2. **Open the testing interface:**
+   - Open `frontend/index.html` directly in your browser
+   - No build or npm install required
+   - You'll see a comprehensive testing dashboard with:
+     - Health check button
+     - Run all tests button
+     - Run specific test modules
+     - Upload STEP files for processing
+     - View detailed test results
+
 ### Frontend Setup
 
 ```bash
