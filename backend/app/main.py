@@ -1,6 +1,7 @@
 """FastAPI application factory."""
 
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -14,13 +15,6 @@ from app.api.v1.endpoints import health, step, jobs
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
 
-    app = FastAPI(
-        title="WEBLE Backend",
-        description="AI-Powered STEP to IKEA Assembly Instructions",
-        version="0.1.0",
-        debug=settings.debug,
-    )
-
     # Setup logging
     logging.basicConfig(
         level=settings.log_level.value,
@@ -28,19 +22,28 @@ def create_app() -> FastAPI:
     )
     logger = logging.getLogger(__name__)
 
-    # ========== Startup/Shutdown Events ==========
+    # ========== Lifespan Events ==========
 
-    @app.on_event("startup")
-    async def startup_event() -> None:
-        """Initialize services on startup."""
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """Manage application startup and shutdown."""
+        # Startup
         logger.info("Starting WEBLE backend...")
         container = await get_container()
         logger.info("Services initialized")
 
-    @app.on_event("shutdown")
-    async def shutdown_event() -> None:
-        """Cleanup on shutdown."""
+        yield
+
+        # Shutdown
         logger.info("Shutting down WEBLE backend...")
+
+    app = FastAPI(
+        title="WEBLE Backend",
+        description="AI-Powered STEP to IKEA Assembly Instructions",
+        version="0.1.0",
+        debug=settings.debug,
+        lifespan=lifespan,
+    )
 
     # ========== Exception Handlers ==========
 
