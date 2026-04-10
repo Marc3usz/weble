@@ -120,16 +120,17 @@ weble/
 
 To quickly test the backend without a full setup:
 
-1. **Start the backend server:**
+1. **Start the backend server (uv):**
    ```bash
    cd backend
-   python -m uvicorn app.main:app --reload
+   uv run uvicorn app.main:app --reload
    ```
    Server runs on `http://localhost:8000`
 
 2. **Open the testing interface:**
-   - Open `frontend/index.html` directly in your browser
-   - No build or npm install required
+   - Open `http://localhost:8000/testing` in your browser
+   - Or open `frontend/index.html` directly if preferred
+   - No build or npm install required for the testing dashboard
    - You'll see a comprehensive testing dashboard with:
      - Health check button
      - Run all tests button

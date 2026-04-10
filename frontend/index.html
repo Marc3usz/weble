@@ -482,12 +482,15 @@
 
         <!-- Footer -->
         <footer style="text-align: center; color: white; margin-top: 40px; opacity: 0.8;">
-            <p>WEBLE Testing Interface | Backend running on http://localhost:8000</p>
+            <p>WEBLE Testing Interface | Backend: <span id="backendUrlLabel">Loading...</span></p>
         </footer>
     </div>
 
     <script>
-        const API_URL = 'http://localhost:8000/api/v1';
+        const API_BASE = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
+            ? window.location.origin
+            : 'http://localhost:8000';
+        const API_URL = `${API_BASE}/api/v1`;
         let logs = [];
 
         function addLog(message, type = 'info') {
@@ -871,6 +874,10 @@
         }
 
         // Initial log entry
+        const backendUrlLabel = document.getElementById('backendUrlLabel');
+        if (backendUrlLabel) {
+            backendUrlLabel.textContent = API_BASE;
+        }
         addLog('Testing interface loaded. Backend URL: ' + API_URL);
     </script>
 </body>
