@@ -4,21 +4,19 @@ import { Canvas } from '@react-three/fiber';
 import { PerspectiveCamera, OrbitControls } from '@react-three/drei';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { Geometry3D } from '@/app/types';
 
 interface Canvas3DProps {
-  geometry: { vertices: number[][]; normals: number[][]; indices: number[] } | null;
+  geometry: Geometry3D | null;
 }
 
-function Model({ geometry }: { geometry: any }) {
-  if (!geometry) return null;
-
+function Model({ geometry }: { geometry: Geometry3D }) {
   const meshRef = useRef<THREE.Mesh>(null);
 
   useEffect(() => {
     if (meshRef.current && geometry) {
       const bufferGeometry = new THREE.BufferGeometry();
 
-      // Convert vertices and indices
       const vertices = new Float32Array(geometry.vertices.flat());
       const indices = new Uint32Array(geometry.indices);
       const normals = new Float32Array(geometry.normals.flat());
@@ -55,7 +53,7 @@ export function Canvas3D({ geometry }: Canvas3DProps) {
       <directionalLight position={[-100, -100, -50]} intensity={0.3} />
 
       {/* Model */}
-      <Model geometry={geometry} />
+      {geometry && <Model geometry={geometry} />}
 
       {/* Grid */}
       <gridHelper args={[200, 20]} position={[0, -50, 0]} />

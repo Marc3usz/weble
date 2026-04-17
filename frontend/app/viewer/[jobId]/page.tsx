@@ -8,16 +8,16 @@ import { useJobProgress } from '@/app/hooks/useApi';
 import { useModel } from '@/app/contexts/ModelContext';
 import { api } from '@/app/services/api';
 import { LABELS } from '@/app/constants/labels';
+import { Geometry3D, Part } from '@/app/types';
 
 export default function ViewerPage() {
   const params = useParams();
   const router = useRouter();
   const { modelId, jobId } = useModel();
   const { progress, error: progressError } = useJobProgress(jobId);
-  const [geometry, setGeometry] = useState(null);
-  const [tabIndex, setTabIndex] = useState(0);
-  const [parts, setParts] = useState(null);
-  const [assemblySteps, setAssemblySteps] = useState(null);
+  const [geometry, setGeometry] = useState<Geometry3D | null>(null);
+  const [tabIndex, setTabIndex] = useState<number>(0);
+  const [parts, setParts] = useState<Part[] | null>(null);
 
   // Fetch geometry when job completes
   useEffect(() => {
@@ -29,9 +29,8 @@ export default function ViewerPage() {
   const fetchModelData = async () => {
     try {
       const modelData = await api.getModel(modelId!);
-      if (modelData.geometry_loaded) {
-        // In a real app, geometry would be loaded from the response
-        setGeometry(modelData);
+      if (modelData.geometry_loaded && modelData.geometry) {
+        setGeometry(modelData.geometry);
       }
 
       // Fetch parts
@@ -121,17 +120,6 @@ export default function ViewerPage() {
                 >
                   {LABELS.viewer.tabs.parts}
                 </button>
-                <button
-                  onClick={() => setTabIndex(2)}
-                  disabled={!assemblySteps}
-                  className={`px-4 py-2 font-semibold transition-colors disabled:opacity-50 ${
-                    tabIndex === 2
-                      ? 'text-black border-b-2 border-black'
-                      : 'text-dim-grey hover:text-black'
-                  }`}
-                >
-                  {LABELS.viewer.tabs.steps}
-                </button>
               </div>
 
               {/* Tab content */}
@@ -149,7 +137,7 @@ export default function ViewerPage() {
 
                 {tabIndex === 1 && parts && (
                   <div className="space-y-2">
-                    {Array.isArray(parts) && parts.map((part: any, idx: number) => (
+                    {Array.isArray(parts) && parts.map((part: Part, idx: number) => (
                       <div
                         key={idx}
                         className="p-2 bg-alabaster-grey rounded border-l-4 border-black"
@@ -161,8 +149,8 @@ export default function ViewerPage() {
                   </div>
                 )}
 
-                {tabIndex === 2 && (
-                  <p className="text-dim-grey text-sm">{LABELS.viewer.complete}</p>
+                {tabIndex === 1 && !parts && (
+                  <p className="text-dim-grey text-sm">{LABELS.common.loading}</p>
                 )}
               </div>
 

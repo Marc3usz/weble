@@ -20,6 +20,31 @@ export enum AssemblyTone {
   BEGINNER = 'beginner',
 }
 
+// Geometry types (matches backend Geometry3D)
+export interface Geometry3D {
+  vertices: number[][];
+  normals: number[][];
+  indices: number[];
+  metadata?: Record<string, unknown>;
+}
+
+// Model response from GET /api/v1/step/{model_id}
+export interface ModelResponse {
+  status: string;
+  model_id: string;
+  file_name: string;
+  file_size: number;
+  geometry_loaded: boolean;
+  geometry?: Geometry3D;
+}
+
+// Health check response
+export interface HealthResponse {
+  status: string;
+  version: string;
+  message: string;
+}
+
 // API Response types
 export interface UploadResponse {
   job_id: string;

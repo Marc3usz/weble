@@ -1,4 +1,14 @@
-import { APIError, UploadResponse, JobStatusResponse, PartsResponse, AssemblyResponse, AssemblyTone } from '@/app/types';
+import {
+  APIError,
+  UploadResponse,
+  JobStatusResponse,
+  PartsResponse,
+  AssemblyResponse,
+  AssemblyTone,
+  ModelResponse,
+  HealthResponse,
+  ProgressStreamResponse,
+} from '@/app/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -66,8 +76,8 @@ export const api = {
   },
 
   // Get model
-  getModel: async (modelId: string) => {
-    return apiCall(`/api/v1/step/${modelId}`);
+  getModel: async (modelId: string): Promise<ModelResponse> => {
+    return apiCall<ModelResponse>(`/api/v1/step/${modelId}`);
   },
 
   // Extract parts
@@ -95,26 +105,26 @@ export const api = {
   },
 
   // Health check
-  healthCheck: async () => {
-    return apiCall('/api/v1/health');
+  healthCheck: async (): Promise<HealthResponse> => {
+    return apiCall<HealthResponse>('/api/v1/health');
   },
 };
 
 // SSE subscription for progress updates
 export function subscribeToProgress(
   jobId: string,
-  onMessage: (data: any) => void,
+  onMessage: (data: ProgressStreamResponse) => void,
   onError: (error: Error) => void
 ): () => void {
   const url = `${API_BASE_URL}/api/v1/step/progress/${jobId}/stream`;
   
   const eventSource = new EventSource(url);
 
-  eventSource.onmessage = (event) => {
+  eventSource.onmessage = (event: MessageEvent) => {
     try {
-      const data = JSON.parse(event.data);
+      const data: ProgressStreamResponse = JSON.parse(event.data);
       onMessage(data);
-    } catch (error) {
+    } catch (_) {
       onError(new Error('Failed to parse progress data'));
     }
   };

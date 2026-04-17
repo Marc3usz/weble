@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, subscribeToProgress } from '@/app/services/api';
-import { JobStatusResponse, ProgressStreamResponse, APIError } from '@/app/types';
+import {
+  Part,
+  AssemblyStep,
+  AssemblyTone,
+  ProgressStreamResponse,
+  APIError,
+} from '@/app/types';
 
 // Hook for tracking job progress via SSE
 export function useJobProgress(jobId: string | null) {
@@ -104,7 +110,7 @@ export function useFileUpload() {
 
 // Hook for fetching parts
 export function useParts(modelId: string | null) {
-  const [parts, setParts] = useState<any>(null);
+  const [parts, setParts] = useState<Part[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -130,8 +136,8 @@ export function useParts(modelId: string | null) {
 }
 
 // Hook for fetching assembly steps
-export function useAssemblySteps(modelId: string | null, tone: string | null) {
-  const [steps, setSteps] = useState<any>(null);
+export function useAssemblySteps(modelId: string | null, tone: AssemblyTone | null) {
+  const [steps, setSteps] = useState<AssemblyStep[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -141,7 +147,7 @@ export function useAssemblySteps(modelId: string | null, tone: string | null) {
     const fetchSteps = async () => {
       setLoading(true);
       try {
-        const response = await api.generateAssembly(modelId, tone as any);
+        const response = await api.generateAssembly(modelId, tone);
         setSteps(response.steps);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch assembly steps');
