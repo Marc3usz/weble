@@ -127,6 +127,14 @@ async def get_step_model(
         "file_name": model.get("file_name"),
         "file_size": model.get("file_size"),
         "geometry_loaded": geometry is not None,
+        "geometry": {
+            "vertices": geometry.vertices,
+            "normals": geometry.normals,
+            "indices": geometry.indices,
+            "metadata": geometry.metadata,
+        }
+        if geometry is not None
+        else None,
     }
 
 

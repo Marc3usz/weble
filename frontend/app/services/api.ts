@@ -1,141 +1,93 @@
+import axios, { AxiosInstance } from 'axios';
 import {
-  APIError,
   UploadResponse,
-  JobStatusResponse,
+  ProgressEvent,
+  ModelData,
   PartsResponse,
   AssemblyResponse,
-  AssemblyTone,
-  ModelResponse,
-  HealthResponse,
-  ProgressStreamResponse,
+  JobStatusResponse,
 } from '@/app/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-// Helper to make API calls
-async function apiCall<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
+class ApiService {
+  private client: AxiosInstance;
+
+  constructor() {
+    this.client = axios.create({
+      baseURL: API_BASE_URL,
       headers: {
         'Content-Type': 'application/json',
-        ...options?.headers,
       },
     });
-
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new APIError(
-        response.status,
-        data.detail || `HTTP ${response.status}`,
-        data.code
-      );
-    }
-
-    return response.json();
-  } catch (error) {
-    if (error instanceof APIError) {
-      throw error;
-    }
-    throw new APIError(0, 'Network error', 'NETWORK_ERROR');
   }
-}
 
-export const api = {
-  // Upload STEP file
-  uploadFile: async (file: File): Promise<UploadResponse> => {
+  /**
+   * Upload a STEP file for processing
+   */
+  async uploadStepFile(file: File): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const url = `${API_BASE_URL}/api/v1/step/upload`;
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
+    const response = await this.client.post<UploadResponse>('/step/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new APIError(
-        response.status,
-        data.detail || `HTTP ${response.status}`,
-        data.code
-      );
-    }
+    return response.data;
+  }
 
-    return response.json();
-  },
+  /**
+   * Get model data including geometry
+   */
+  async getModel(modelId: string): Promise<ModelData> {
+    const response = await this.client.get<ModelData>(`/step/${modelId}`);
+    return response.data;
+  }
 
-  // Get job status
-  getJobStatus: async (jobId: string): Promise<JobStatusResponse> => {
-    return apiCall<JobStatusResponse>(`/api/v1/jobs/${jobId}`);
-  },
+  /**
+   * Get job status
+   */
+  async getJobStatus(jobId: string): Promise<JobStatusResponse> {
+    const response = await this.client.get<JobStatusResponse>(`/jobs/${jobId}`);
+    return response.data;
+  }
 
-  // Get model
-  getModel: async (modelId: string): Promise<ModelResponse> => {
-    return apiCall<ModelResponse>(`/api/v1/step/${modelId}`);
-  },
+  /**
+   * Stream job progress via Server-Sent Events
+   */
+  streamProgress(jobId: string): EventSource {
+    const url = `${API_BASE_URL}/step/progress/${jobId}/stream`;
+    return new EventSource(url);
+  }
 
-  // Extract parts
-  extractParts: async (modelId: string): Promise<PartsResponse> => {
-    return apiCall<PartsResponse>('/api/v1/step/parts-2d', {
-      method: 'POST',
-      body: JSON.stringify({ model_id: modelId }),
+  /**
+   * Generate parts 2D drawings
+   */
+  async generateParts2D(modelId: string): Promise<PartsResponse> {
+    const response = await this.client.post<PartsResponse>('/step/parts-2d', {
+      model_id: modelId,
     });
-  },
+    return response.data;
+  }
 
-  // Generate assembly instructions
-  generateAssembly: async (
+  /**
+   * Generate assembly analysis
+   */
+  async generateAssemblyAnalysis(
     modelId: string,
-    tone: AssemblyTone,
-    preview_only: boolean = false
-  ): Promise<AssemblyResponse> => {
-    return apiCall<AssemblyResponse>('/api/v1/step/assembly-analysis', {
-      method: 'POST',
-      body: JSON.stringify({
-        model_id: modelId,
-        tone: tone,
-        preview_only: preview_only,
-      }),
-    });
-  },
-
-  // Health check
-  healthCheck: async (): Promise<HealthResponse> => {
-    return apiCall<HealthResponse>('/api/v1/health');
-  },
-};
-
-// SSE subscription for progress updates
-export function subscribeToProgress(
-  jobId: string,
-  onMessage: (data: ProgressStreamResponse) => void,
-  onError: (error: Error) => void
-): () => void {
-  const url = `${API_BASE_URL}/api/v1/step/progress/${jobId}/stream`;
-  
-  const eventSource = new EventSource(url);
-
-  eventSource.onmessage = (event: MessageEvent) => {
-    try {
-      const data: ProgressStreamResponse = JSON.parse(event.data);
-      onMessage(data);
-    } catch (_) {
-      onError(new Error('Failed to parse progress data'));
-    }
-  };
-
-  eventSource.onerror = () => {
-    eventSource.close();
-    onError(new Error('SSE connection error'));
-  };
-
-  // Return unsubscribe function
-  return () => {
-    eventSource.close();
-  };
+    previewOnly: boolean = false
+  ): Promise<AssemblyResponse> {
+    const response = await this.client.post<AssemblyResponse>(
+      '/step/assembly-analysis',
+      { model_id: modelId },
+      {
+        params: { preview_only: previewOnly },
+      }
+    );
+    return response.data;
+  }
 }
+
+export default new ApiService();

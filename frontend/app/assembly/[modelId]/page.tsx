@@ -1,256 +1,274 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useModel } from '@/app/contexts/ModelContext';
-import { useAssemblySteps } from '@/app/hooks/useApi';
-import { Canvas3D } from '@/app/components/Canvas3D';
-import { PDFExportModal } from '@/app/components/PDFExportModal';
-import { LABELS } from '@/app/constants/labels';
-import { formatDuration, formatConfidence } from '@/app/utils/helpers';
+import { useAppStore } from '@/app/store/appStore';
+import apiService from '@/app/services/api';
+import { AssemblyStep } from '@/app/types';
+import { AssemblyInstructionsPDFDownload } from '@/app/utils/pdfExport';
+import {
+  AlertCircle,
+  Loader2,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+} from 'lucide-react';
 
 export default function AssemblyPage() {
-  const params = useParams();
   const router = useRouter();
-  const { tone, modelId } = useModel();
-  const { steps, loading, error } = useAssemblySteps(modelId, tone);
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
-  const [isPDFModalOpen, setIsPDFModalOpen] = useState<boolean>(false);
+  const params = useParams();
+  const modelId = params.modelId as string;
 
+  const { model, setAssembly } = useAppStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>();
+  const [currentStep, setCurrentStep] = useState(0);
+
+  // Load assembly instructions on mount
   useEffect(() => {
-    if (!modelId || !tone) {
-      router.push('/upload');
+    const loadAssembly = async () => {
+      if (!modelId) return;
+
+      try {
+        setIsLoading(true);
+        const response = await apiService.generateAssemblyAnalysis(modelId, false);
+        setAssembly(response);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Błąd wczytywania instrukcji';
+        setError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (!model.assembly) {
+      loadAssembly();
     }
-  }, [modelId, tone, router]);
+  }, [modelId, model.assembly, setAssembly]);
 
-  if (!steps || loading) {
-    return (
-      <div className="min-h-screen bg-platinum flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-dim-grey">{LABELS.common.loading}</p>
-        </div>
-      </div>
-    );
-  }
+  const steps = model.assembly?.steps || [];
+  const step = steps[currentStep];
 
-  if (error || !Array.isArray(steps) || steps.length === 0) {
+  const handleNext = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  // Note: PDF download link is rendered separately in the header
+
+  const handleBack = () => {
+    router.push(`/parts/${modelId}`);
+  };
+
+  if (error) {
     return (
-      <div className="min-h-screen bg-platinum flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <p className="text-red-600 font-semibold mb-4">{LABELS.errors.apiError}</p>
+      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+          <h3 className="font-semibold mb-2">Błąd</h3>
+          <p className="text-sm text-slate-400 mb-6">{error}</p>
           <button
-            onClick={() => router.push('/upload')}
-            className="px-6 py-2 bg-black text-platinum rounded-lg hover:bg-dim-grey transition-colors"
+            onClick={handleBack}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-sm font-medium"
           >
-            {LABELS.errors.goHome}
+            Wróć
           </button>
         </div>
       </div>
     );
   }
 
-  const currentStep = steps[currentStepIndex];
-  const totalSteps = steps.length;
-
   return (
-    <div className="min-h-screen bg-platinum text-black">
+    <div className="min-h-screen bg-slate-900 text-white flex flex-col">
       {/* Header */}
-      <div className="bg-alabaster-grey border-b-2 border-alabaster-grey px-8 py-4">
-        <h1 className="text-2xl font-bold">{LABELS.assembly.title}</h1>
-        <p className="text-dim-grey text-sm">
-          {LABELS.assembly.step} {currentStepIndex + 1} {LABELS.assembly.of} {totalSteps}
-        </p>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex gap-4 p-4 h-[calc(100vh-100px)]">
-        {/* Left Sidebar: Parts (20%) */}
-        <div className="w-1/5 bg-platinum border-2 border-alabaster-grey rounded-lg p-4 overflow-y-auto">
-          <h3 className="font-semibold text-black mb-3">{LABELS.assembly.partsForThisStep}</h3>
-          <div className="space-y-2 mb-4">
-            {currentStep.part_indices?.map((idx: number) => (
-              <div key={idx} className="p-2 bg-alabaster-grey rounded border-l-4 border-black text-sm">
-                <p className="font-semibold">Part {idx}</p>
-                <p className="text-dim-grey text-xs">
-                  {currentStep.part_roles?.[idx] || 'Unknown'}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t-2 border-alabaster-grey pt-4">
-            <h4 className="font-semibold text-black mb-3 text-sm">{LABELS.assembly.previouslyAssembled}</h4>
-            <div className="space-y-2">
-              {currentStep.context_part_indices?.map((idx) => (
-                <div key={idx} className="p-2 bg-alabaster-grey rounded opacity-60 text-sm">
-                  <p className="font-semibold">Part {idx}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Center: Step Content (60%) */}
-        <div className="w-3/5 flex flex-col gap-4">
-          {/* Title */}
-          <div className="bg-alabaster-grey border-2 border-alabaster-grey rounded-lg p-4">
-            <h2 className="text-2xl font-bold text-black mb-1">{currentStep.title}</h2>
-            <p className="text-dim-grey text-sm">
-              {currentStep.is_llm_generated
-                ? LABELS.assembly.llmGenerated
-                : LABELS.assembly.rulesGenerated}
+      <div className="bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Instrukcja montażu</h1>
+            <p className="text-sm text-slate-400 mt-1">
+              {steps.length > 0
+                ? `Krok ${currentStep + 1} z ${steps.length}`
+                : 'Brak instrukcji'}
             </p>
           </div>
-
-          {/* Exploded View SVG or placeholder */}
-          <div className="bg-platinum border-2 border-alabaster-grey rounded-lg p-4 flex-1 flex items-center justify-center">
-            {currentStep.exploded_view_svg ? (
-              <div
-                dangerouslySetInnerHTML={{ __html: currentStep.exploded_view_svg }}
-                className="w-full h-full"
+          <div className="flex items-center gap-2">
+            {model.parts && model.assembly && (
+              <AssemblyInstructionsPDFDownload
+                fileName={`instrukcja-${modelId}`}
+                parts={model.parts}
+                steps={model.assembly.steps}
               />
-            ) : (
-              <div className="text-center text-dim-grey">
-                <p className="text-sm">SVG View coming soon</p>
-              </div>
             )}
-          </div>
-
-          {/* Navigation */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
-              disabled={currentStepIndex === 0}
-              className="px-6 py-2 bg-alabaster-grey text-black rounded-lg hover:bg-dim-grey disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {LABELS.assembly.previous}
-            </button>
-
-            {/* Step selector dropdown */}
-            <select
-              value={currentStepIndex}
-              onChange={(e) => setCurrentStepIndex(parseInt(e.target.value))}
-              className="flex-1 px-4 py-2 bg-alabaster-grey text-black rounded-lg border-2 border-alabaster-grey focus:border-dim-grey"
-            >
-              {steps.map((_, idx) => (
-                <option key={idx} value={idx}>
-                  {LABELS.assembly.step} {idx + 1}: {steps[idx].title}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={() => setCurrentStepIndex(Math.min(totalSteps - 1, currentStepIndex + 1))}
-              disabled={currentStepIndex === totalSteps - 1}
-              className="px-6 py-2 bg-black text-platinum rounded-lg hover:bg-dim-grey disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {LABELS.assembly.next}
-            </button>
-          </div>
-        </div>
-
-        {/* Right Sidebar: Details (20%) */}
-        <div className="w-1/5 bg-platinum border-2 border-alabaster-grey rounded-lg p-4 overflow-y-auto space-y-4">
-          {/* Description */}
-          <div>
-            <h4 className="font-semibold text-black mb-2 text-sm">{LABELS.assembly.description}</h4>
-            <p className="text-sm text-dim-grey">{currentStep.description}</p>
-          </div>
-
-          {/* Detailed Description (LLM-generated) */}
-          {currentStep.detail_description && (
-            <div>
-              <h4 className="font-semibold text-black mb-2 text-sm">{LABELS.assembly.detailedDescription}</h4>
-              <p className="text-sm text-dim-grey">{currentStep.detail_description}</p>
-            </div>
-          )}
-
-          {/* Sequence */}
-          {currentStep.assembly_sequence && currentStep.assembly_sequence.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-black mb-2 text-sm">{LABELS.assembly.sequence}</h4>
-              <ol className="list-decimal list-inside space-y-1">
-                {currentStep.assembly_sequence.map((action, idx) => (
-                  <li key={idx} className="text-sm text-dim-grey">
-                    {action}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-
-          {/* Warnings */}
-          {currentStep.warnings && currentStep.warnings.length > 0 && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded">
-              <h4 className="font-semibold text-red-700 mb-2 text-sm">⚠️ {LABELS.assembly.warnings}</h4>
-              <ul className="space-y-1">
-                {currentStep.warnings.map((warning, idx) => (
-                  <li key={idx} className="text-xs text-red-600">
-                    {warning}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Tips */}
-          {currentStep.tips && currentStep.tips.length > 0 && (
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
-              <h4 className="font-semibold text-blue-700 mb-2 text-sm">💡 {LABELS.assembly.tips}</h4>
-              <ul className="space-y-1">
-                {currentStep.tips.map((tip, idx) => (
-                  <li key={idx} className="text-xs text-blue-600">
-                    {tip}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Duration & Confidence */}
-          <div className="border-t-2 border-alabaster-grey pt-3 space-y-2">
-            {currentStep.duration_minutes > 0 && (
-              <div>
-                <p className="text-xs text-dim-grey">
-                  <span className="font-semibold">⏱️ {LABELS.assembly.duration}:</span>{' '}
-                  {formatDuration(currentStep.duration_minutes)}
-                </p>
-              </div>
-            )}
-            <div>
-              <p className="text-xs text-dim-grey">
-                <span className="font-semibold">{LABELS.assembly.confidence}:</span>{' '}
-                {formatConfidence(currentStep.confidence_score)}
-              </p>
-            </div>
-          </div>
-
-          {/* Export buttons */}
-          <div className="border-t-2 border-alabaster-grey pt-3 space-y-2">
-            <button
-              onClick={() => setIsPDFModalOpen(true)}
-              className="w-full py-2 bg-black text-platinum rounded-lg hover:bg-dim-grey transition-colors text-sm font-semibold"
-            >
-              {LABELS.assembly.export}
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="w-full py-2 bg-alabaster-grey text-black rounded-lg hover:bg-rosy-granite transition-colors text-sm font-semibold"
-            >
-              {LABELS.assembly.print}
-            </button>
           </div>
         </div>
       </div>
 
-      {/* PDF Export Modal */}
-      <PDFExportModal
-        isOpen={isPDFModalOpen}
-        onClose={() => setIsPDFModalOpen(false)}
-        step={currentStep}
-        modelId={modelId || undefined}
-      />
+      {/* Content */}
+      <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
+        {isLoading && !model.assembly ? (
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-400" />
+              <p>Generowanie instrukcji montażu...</p>
+            </div>
+          </div>
+        ) : !steps || steps.length === 0 ? (
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+              <p>Brak instrukcji do wyświetlenia</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Step Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              {/* Diagram Area */}
+              <div className="lg:col-span-2">
+                <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 h-96 flex items-center justify-center">
+                  <div className="text-center">
+                    <AlertCircle className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-400">Diagram montażu (SVG)</p>
+                    <p className="text-xs text-slate-500 mt-2">
+                      Wyrysowanie będzie generowane dla każdego kroku
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step Details */}
+              <div className="space-y-4">
+                {/* Step Info */}
+                <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-lg p-6 border border-blue-700">
+                  <h2 className="text-2xl font-bold mb-2">{step.title}</h2>
+                  <p className="text-blue-200 text-sm mb-4">{step.description}</p>
+
+                  {step.detail_description && (
+                    <div className="mt-4 p-4 bg-blue-950 rounded border border-blue-700">
+                      <p className="text-xs text-blue-300 leading-relaxed">
+                        {step.detail_description}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Parts Involved */}
+                <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                  <h3 className="font-semibold mb-3 text-sm">Części zaangażowane</h3>
+                  <div className="space-y-2">
+                    {step.part_indices.map((partIdx) => (
+                      <div
+                        key={partIdx}
+                        className="p-2 bg-slate-700 rounded text-sm flex justify-between items-center"
+                      >
+                        <span>Część {partIdx}</span>
+                        <span className="text-slate-400">
+                          {step.part_roles[partIdx] || 'nieznana rola'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Assembly Sequence */}
+                {step.assembly_sequence && step.assembly_sequence.length > 0 && (
+                  <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                    <h3 className="font-semibold mb-3 text-sm">Sekwencja</h3>
+                    <ol className="space-y-2">
+                      {step.assembly_sequence.map((seq, idx) => (
+                        <li key={idx} className="text-sm text-slate-300 flex gap-2">
+                          <span className="font-semibold text-blue-400">{idx + 1}.</span>
+                          {seq}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {/* Tips */}
+                {step.tips && step.tips.length > 0 && (
+                  <div className="bg-emerald-900 bg-opacity-30 rounded-lg p-4 border border-emerald-700 border-opacity-50">
+                    <h3 className="font-semibold mb-2 text-sm text-emerald-300">Wskazówki</h3>
+                    <ul className="space-y-1">
+                      {step.tips.map((tip, idx) => (
+                        <li key={idx} className="text-xs text-emerald-200">
+                          • {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Warnings */}
+                {step.warnings && step.warnings.length > 0 && (
+                  <div className="bg-red-900 bg-opacity-30 rounded-lg p-4 border border-red-700 border-opacity-50">
+                    <h3 className="font-semibold mb-2 text-sm text-red-300">Ostrzeżenia</h3>
+                    <ul className="space-y-1">
+                      {step.warnings.map((warn, idx) => (
+                        <li key={idx} className="text-xs text-red-200">
+                          ⚠ {warn}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex gap-3 justify-center items-center">
+              <button
+                onClick={handleBack}
+                className="px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold flex items-center gap-2 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Wróć do części
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePrev}
+                  disabled={currentStep === 0}
+                  className="p-3 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:opacity-50 rounded-lg transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                <div className="px-6 py-3 bg-slate-800 rounded-lg border border-slate-700 min-w-fit">
+                  <p className="font-semibold text-center">
+                    {currentStep + 1} / {steps.length}
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleNext}
+                  disabled={currentStep === steps.length - 1}
+                  className="p-3 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:opacity-50 rounded-lg transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+
+              {currentStep === steps.length - 1 && (
+                <button
+                  onClick={() => router.push('/upload')}
+                  className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 rounded-lg font-semibold transition-all"
+                >
+                  Nowy projekt
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

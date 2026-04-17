@@ -1,209 +1,181 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useModel } from '@/app/contexts/ModelContext';
-import { useParts } from '@/app/hooks/useApi';
-import { LABELS } from '@/app/constants/labels';
+import { useAppStore } from '@/app/store/appStore';
+import apiService from '@/app/services/api';
 import { Part } from '@/app/types';
+import { AlertCircle, Loader2, ArrowLeft, ArrowRight } from 'lucide-react';
 
 export default function PartsPage() {
   const router = useRouter();
-  const { modelId } = useModel();
-  const { parts, loading, error } = useParts(modelId);
-  const [selectedPart, setSelectedPart] = useState<Part | null>(null);
-  const [searchTerm, setSearchTerm] = useState<string>('');
+  const params = useParams();
+  const modelId = params.modelId as string;
 
+  const { model, setParts } = useAppStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>();
+  const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
+
+  // Load parts on mount
   useEffect(() => {
-    if (!modelId) {
-      router.push('/upload');
+    const loadParts = async () => {
+      if (!modelId) return;
+
+      try {
+        setIsLoading(true);
+        const response = await apiService.generateParts2D(modelId);
+        setParts(response.parts);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Błąd wczytywania części';
+        setError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (!model.parts) {
+      loadParts();
     }
-  }, [modelId, router]);
+  }, [modelId, model.parts, setParts]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-platinum flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-dim-grey">{LABELS.common.loading}</p>
-        </div>
-      </div>
-    );
-  }
+  const handleGoToAssembly = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.generateAssemblyAnalysis(modelId, false);
+      router.push(`/assembly/${modelId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Błąd generowania instrukcji';
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  if (error || !Array.isArray(parts) || parts.length === 0) {
+  const handleBack = () => {
+    router.push(`/viewer/${modelId}`);
+  };
+
+  if (error) {
     return (
-      <div className="min-h-screen bg-platinum flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <p className="text-red-600 font-semibold mb-4">{LABELS.errors.apiError}</p>
+      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+          <h3 className="font-semibold mb-2">Błąd</h3>
+          <p className="text-sm text-slate-400 mb-6">{error}</p>
           <button
-            onClick={() => router.push('/upload')}
-            className="px-6 py-2 bg-black text-platinum rounded-lg hover:bg-dim-grey transition-colors"
+            onClick={handleBack}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-sm font-medium"
           >
-            {LABELS.errors.goHome}
+            Wróć
           </button>
         </div>
       </div>
     );
   }
-
-  // Filter parts based on search term
-  const filteredParts = parts.filter((part: Part) =>
-    part.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Calculate totals
-  const totalParts = parts.reduce((sum: number, part: Part) => sum + part.quantity, 0);
-  const totalVolume = parts.reduce((sum: number, part: Part) => sum + part.volume, 0);
 
   return (
-    <div className="min-h-screen bg-platinum text-black">
+    <div className="min-h-screen bg-slate-900 text-white flex flex-col">
       {/* Header */}
-      <div className="bg-alabaster-grey border-b-2 border-alabaster-grey px-8 py-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">{LABELS.parts.title}</h1>
-            <p className="text-dim-grey text-sm mt-1">
-              {parts.length} {LABELS.parts.uniqueParts} · {totalParts} {LABELS.parts.totalParts}
-            </p>
-          </div>
-          <button
-            onClick={() => router.push('/assembly/[modelId]'.replace('[modelId]', modelId!))}
-            className="px-6 py-2 bg-black text-platinum rounded-lg hover:bg-dim-grey transition-colors font-semibold"
-          >
-            {LABELS.parts.goToAssembly}
-          </button>
+      <div className="bg-slate-800 border-b border-slate-700 p-4">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-2xl font-bold">Części komponenty</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Znaleziono {model.parts?.length || 0} typu części
+          </p>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex gap-4 p-4 h-[calc(100vh-100px)]">
-        {/* Left Sidebar: Parts List (40%) */}
-        <div className="w-2/5 bg-platinum border-2 border-alabaster-grey rounded-lg overflow-hidden flex flex-col">
-          {/* Search */}
-          <div className="p-4 border-b-2 border-alabaster-grey">
-            <input
-              type="text"
-              placeholder={LABELS.parts.searchPlaceholder}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border-2 border-alabaster-grey rounded-lg focus:border-black outline-none bg-platinum"
-            />
-          </div>
-
-          {/* Parts List */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-4 space-y-2">
-              {filteredParts.map((part: Part, idx: number) => (
-                <button
-                  key={part.id}
-                  onClick={() => setSelectedPart(part)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors border-l-4 ${
-                    selectedPart?.id === part.id
-                      ? 'bg-alabaster-grey border-black'
-                      : 'border-transparent bg-platinum hover:bg-alabaster-grey'
-                  }`}
-                >
-                  <p className="font-semibold text-sm">{part.id}</p>
-                  <p className="text-xs text-dim-grey">
-                    {LABELS.parts.quantity}: {part.quantity}
-                  </p>
-                </button>
-              ))}
+      {/* Content */}
+      <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
+        {isLoading && !model.parts ? (
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-400" />
+              <p>Wczytywanie części...</p>
             </div>
           </div>
-        </div>
-
-        {/* Right Content: Part Details (60%) */}
-        <div className="w-3/5 flex flex-col gap-4">
-          {selectedPart ? (
-            <>
-              {/* Part Header */}
-              <div className="bg-alabaster-grey border-2 border-alabaster-grey rounded-lg p-4">
-                <h2 className="text-2xl font-bold text-black mb-2">{selectedPart.id}</h2>
-                <p className="text-dim-grey text-sm">{selectedPart.part_type}</p>
-              </div>
-
-              {/* Part Details */}
-              <div className="bg-platinum border-2 border-alabaster-grey rounded-lg p-4 flex-1 overflow-y-auto">
-                <div className="space-y-6">
-                  {/* Basic Info */}
-                  <div>
-                    <h3 className="font-semibold text-black mb-3">{LABELS.parts.basicInfo}</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between p-2 bg-alabaster-grey rounded">
-                        <span className="text-dim-grey">{LABELS.parts.type}:</span>
-                        <span className="font-semibold">{selectedPart.part_type}</span>
-                      </div>
-                      <div className="flex justify-between p-2 bg-alabaster-grey rounded">
-                        <span className="text-dim-grey">{LABELS.parts.quantity}:</span>
-                        <span className="font-semibold">{selectedPart.quantity}</span>
-                      </div>
-                      <div className="flex justify-between p-2 bg-alabaster-grey rounded">
-                        <span className="text-dim-grey">{LABELS.parts.volume}:</span>
-                        <span className="font-semibold">{selectedPart.volume.toFixed(2)} mm³</span>
-                      </div>
+        ) : !model.parts || model.parts.length === 0 ? (
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+              <p>Brak części do wyświetlenia</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Parts Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+              {model.parts.map((part: Part) => (
+                <div
+                  key={part.id}
+                  onClick={() => setSelectedPartId(part.id)}
+                  className={`p-4 rounded-lg border transition-all cursor-pointer ${
+                    selectedPartId === part.id
+                      ? 'bg-blue-900 border-blue-500 ring-2 ring-blue-400'
+                      : 'bg-slate-800 border-slate-700 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">Część {part.id}</h3>
+                      <p className="text-xs text-slate-400 mt-1">{part.part_type}</p>
                     </div>
+                    {part.quantity > 1 && (
+                      <span className="bg-blue-600 px-2 py-1 rounded text-xs font-semibold">
+                        ×{part.quantity}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Dimensions */}
-                  <div>
-                    <h3 className="font-semibold text-black mb-3">{LABELS.parts.dimensions}</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between p-2 bg-alabaster-grey rounded">
-                        <span className="text-dim-grey">{LABELS.parts.width}:</span>
-                        <span className="font-semibold">{selectedPart.dimensions.width.toFixed(2)} mm</span>
-                      </div>
-                      <div className="flex justify-between p-2 bg-alabaster-grey rounded">
-                        <span className="text-dim-grey">{LABELS.parts.height}:</span>
-                        <span className="font-semibold">{selectedPart.dimensions.height.toFixed(2)} mm</span>
-                      </div>
-                      <div className="flex justify-between p-2 bg-alabaster-grey rounded">
-                        <span className="text-dim-grey">{LABELS.parts.depth}:</span>
-                        <span className="font-semibold">{selectedPart.dimensions.depth.toFixed(2)} mm</span>
-                      </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Objętość:</span>
+                      <span className="font-medium">{part.volume.toFixed(2)} cm³</span>
                     </div>
-                  </div>
-
-                  {/* SVG Diagram Placeholder */}
-                  <div className="border-t-2 border-alabaster-grey pt-4">
-                    <h3 className="font-semibold text-black mb-3">{LABELS.parts.svgDiagram}</h3>
-                    <div className="bg-alabaster-grey rounded-lg p-8 flex items-center justify-center min-h-48 text-dim-grey">
-                      <p className="text-sm text-center">{LABELS.parts.svgComingSoon}</p>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Wymiary:</span>
+                      <span className="font-medium text-right">
+                        {Object.entries(part.dimensions)
+                          .map(([key, val]) => `${key}: ${val.toFixed(1)}`)
+                          .join(' | ')}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    // Copy part details to clipboard
-                    const details = `${selectedPart.id}\nType: ${selectedPart.part_type}\nQuantity: ${selectedPart.quantity}\nVolume: ${selectedPart.volume.toFixed(2)} mm³\nDimensions: ${selectedPart.dimensions.width.toFixed(2)}×${selectedPart.dimensions.height.toFixed(2)}×${selectedPart.dimensions.depth.toFixed(2)} mm`;
-                    navigator.clipboard.writeText(details);
-                    alert('Part details copied to clipboard!');
-                  }}
-                  className="flex-1 py-2 bg-alabaster-grey text-black rounded-lg hover:bg-rosy-granite transition-colors font-semibold text-sm"
-                >
-                  {LABELS.parts.copy}
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  className="flex-1 py-2 bg-black text-platinum rounded-lg hover:bg-dim-grey transition-colors font-semibold text-sm"
-                >
-                  {LABELS.parts.print}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center bg-platinum border-2 border-alabaster-grey rounded-lg">
-              <p className="text-dim-grey text-center">
-                {LABELS.parts.selectPart}
-              </p>
+              ))}
             </div>
-          )}
-        </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={handleBack}
+                className="px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold flex items-center gap-2 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Wróć do podglądu
+              </button>
+
+              <button
+                onClick={handleGoToAssembly}
+                disabled={isLoading}
+                className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-600 disabled:opacity-50 rounded-lg font-semibold flex items-center gap-2 transition-all"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generowanie...
+                  </>
+                ) : (
+                  <>
+                    Instrukcja montażu
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
