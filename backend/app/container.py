@@ -4,7 +4,8 @@ from typing import Optional
 import logging
 
 from app.core.config import Settings, settings
-from app.db.memory import InMemoryDatabase, get_database
+from app.db.repositories import BaseRepository
+from app.db.factory import get_repository, reset_repository
 from app.services.progress_tracker import ProgressTracker, get_progress_tracker
 
 
@@ -18,31 +19,35 @@ class ServiceContainer:
         self.config = config
         self.logger = logging.getLogger(__name__)
 
-        # Initialize database
-        self._db: Optional[InMemoryDatabase] = None
+        # Initialize repository (abstract database interface)
+        self._repository: Optional[BaseRepository] = None
 
         # Initialize progress tracker
         self._progress_tracker: Optional[ProgressTracker] = None
 
     async def initialize(self) -> None:
         """Initialize all services (call on app startup)."""
-        self._db = await get_database()
+        self._repository = await get_repository()
         self._progress_tracker = await get_progress_tracker()
         self.logger.info("ServiceContainer initialized")
 
-    @property
-    async def database(self) -> InMemoryDatabase:
-        """Get database instance."""
-        if self._db is None:
-            self._db = await get_database()
-        return self._db
+    async def get_repository(self) -> BaseRepository:
+        """Get repository instance."""
+        if self._repository is None:
+            self._repository = await get_repository()
+        return self._repository
 
-    @property
-    async def progress_tracker(self) -> ProgressTracker:
+    async def get_progress_tracker(self) -> ProgressTracker:
         """Get progress tracker instance."""
         if self._progress_tracker is None:
             self._progress_tracker = await get_progress_tracker()
         return self._progress_tracker
+
+    # Keep old _db property for backward compatibility during migration
+    @property
+    async def _db(self) -> BaseRepository:
+        """Deprecated: Use get_repository() instead."""
+        return await self.get_repository()
 
 
 # Global container instance
@@ -61,4 +66,5 @@ async def get_container() -> ServiceContainer:
 async def reset_container() -> None:
     """Reset the global container (for testing)."""
     global _container
+    await reset_repository()
     _container = None

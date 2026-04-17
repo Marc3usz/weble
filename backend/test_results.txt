@@ -1,0 +1,93 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.6, pytest-9.0.3, pluggy-1.6.0 -- C:\Python311\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\MarcelGeba\scat3\weble\backend
+configfile: pyproject.toml
+plugins: anyio-4.13.0, asyncio-1.3.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 71 items
+
+tests/test_exploded_view_generator.py::TestIsometricProjection::test_project_point_origin PASSED [  1%]
+tests/test_exploded_view_generator.py::TestIsometricProjection::test_project_point_x_axis PASSED [  2%]
+tests/test_exploded_view_generator.py::TestIsometricProjection::test_project_point_z_axis PASSED [  4%]
+tests/test_exploded_view_generator.py::TestIsometricBox::test_project_box_returns_8_vertices PASSED [  5%]
+tests/test_exploded_view_generator.py::TestIsometricBox::test_project_box_vertex_names PASSED [  7%]
+tests/test_exploded_view_generator.py::TestIsometricBox::test_project_box_respects_scale PASSED [  8%]
+tests/test_exploded_view_generator.py::TestSVGGeneration::test_generate_returns_svg_string PASSED [  9%]
+tests/test_exploded_view_generator.py::TestSVGGeneration::test_generate_includes_step_number PASSED [ 11%]
+tests/test_exploded_view_generator.py::TestSVGGeneration::test_generate_includes_step_title PASSED [ 12%]
+tests/test_exploded_view_generator.py::TestSVGGeneration::test_generate_includes_part_labels PASSED [ 14%]
+tests/test_exploded_view_generator.py::TestSVGGeneration::test_generate_valid_svg_structure PASSED [ 15%]
+tests/test_exploded_view_generator.py::TestPartHighlighting::test_active_parts_full_opacity PASSED [ 16%]
+tests/test_exploded_view_generator.py::TestPartHighlighting::test_context_parts_reduced_opacity PASSED [ 18%]
+tests/test_exploded_view_generator.py::TestPartHighlighting::test_different_colors_by_part_type PASSED [ 19%]
+tests/test_exploded_view_generator.py::TestPartHighlighting::test_quantity_displayed PASSED [ 21%]
+tests/test_exploded_view_generator.py::TestAssemblySequence::test_assembly_sequence_included PASSED [ 22%]
+tests/test_exploded_view_generator.py::TestAssemblySequence::test_warnings_included PASSED [ 23%]
+tests/test_exploded_view_generator.py::TestValidation::test_validate_valid_input PASSED [ 25%]
+tests/test_exploded_view_generator.py::TestValidation::test_validate_empty_parts PASSED [ 26%]
+tests/test_exploded_view_generator.py::TestValidation::test_validate_empty_part_indices PASSED [ 28%]
+tests/test_exploded_view_generator.py::TestEdgeCases::test_single_part_assembly PASSED [ 29%]
+tests/test_exploded_view_generator.py::TestEdgeCases::test_many_parts_assembly PASSED [ 30%]
+tests/test_exploded_view_generator.py::TestEdgeCases::test_no_assembly_sequence PASSED [ 32%]
+tests/test_exploded_view_generator.py::TestCanvasSize::test_canvas_size_grows_with_parts PASSED [ 33%]
+tests/test_exploded_view_generator.py::TestCanvasSize::test_canvas_size_within_bounds PASSED [ 35%]
+tests/test_assembly_generator_phase3.py::TestAssemblyGeneratorWithLLM::test_process_with_llm_service PASSED [ 36%]
+tests/test_assembly_generator_phase3.py::TestAssemblyGeneratorWithLLM::test_llm_steps_have_llm_marker FAILED [ 38%]
+tests/test_assembly_generator_phase3.py::TestAssemblyGeneratorWithLLM::test_llm_steps_include_phase3_fields PASSED [ 39%]
+tests/test_assembly_generator_phase3.py::TestAssemblyGeneratorWithLLM::test_tone_ikea_passed_to_llm PASSED [ 40%]
+tests/test_assembly_generator_phase3.py::TestAssemblyGeneratorWithLLM::test_tone_technical_passed_to_llm PASSED [ 42%]
+tests/test_assembly_generator_phase3.py::TestAssemblyGeneratorWithLLM::test_tone_beginner_passed_to_llm PASSED [ 43%]
+tests/test_assembly_generator_phase3.py::TestAssemblyTones::test_rules_based_ikea_tone PASSED [ 45%]
+tests/test_assembly_generator_phase3.py::TestAssemblyTones::test_rules_based_technical_tone PASSED [ 46%]
+tests/test_assembly_generator_phase3.py::TestAssemblyTones::test_rules_based_beginner_tone PASSED [ 47%]
+tests/test_assembly_generator_phase3.py::TestAssemblyTones::test_different_tones_produce_different_steps PASSED [ 49%]
+tests/test_assembly_generator_phase3.py::TestFallbackMechanism::test_fallback_on_llm_error PASSED [ 50%]
+tests/test_assembly_generator_phase3.py::TestFallbackMechanism::test_fallback_on_malformed_response PASSED [ 52%]
+tests/test_assembly_generator_phase3.py::TestFallbackMechanism::test_fallback_steps_marked_as_rules PASSED [ 53%]
+tests/test_assembly_generator_phase3.py::TestEdgeCases::test_single_part_assembly PASSED [ 54%]
+tests/test_assembly_generator_phase3.py::TestEdgeCases::test_many_identical_parts PASSED [ 56%]
+tests/test_assembly_generator_phase3.py::TestPreviewMode::test_preview_mode_still_works PASSED [ 57%]
+tests/test_assembly_generator_phase3.py::TestPreviewMode::test_preview_mode_returns_steps PASSED [ 59%]
+tests/test_phase3_integration.py::TestFullPipeline::test_pipeline_complete_assembly PASSED [ 60%]
+tests/test_phase3_integration.py::TestFullPipeline::test_pipeline_generates_exploded_views PASSED [ 61%]
+tests/test_phase3_integration.py::TestFullPipeline::test_pipeline_all_tones PASSED [ 63%]
+tests/test_phase3_integration.py::TestFullPipeline::test_pipeline_produces_valid_output PASSED [ 64%]
+tests/test_phase3_integration.py::TestDataPersistence::test_assembly_sequence_preserved PASSED [ 66%]
+tests/test_phase3_integration.py::TestDataPersistence::test_warnings_and_tips_preserved PASSED [ 67%]
+tests/test_phase3_integration.py::TestDataPersistence::test_confidence_scores_realistic PASSED [ 69%]
+tests/test_phase3_integration.py::TestProgressTracking::test_assembly_generation_completes PASSED [ 70%]
+tests/test_phase3_integration.py::TestProgressTracking::test_step_progression_sequential PASSED [ 71%]
+tests/test_phase3_integration.py::TestProgressTracking::test_llm_marker_consistency PASSED [ 73%]
+tests/test_phase3_integration.py::TestErrorRecovery::test_pipeline_recovers_from_llm_failure PASSED [ 74%]
+tests/test_phase3_integration.py::TestErrorRecovery::test_pipeline_produces_valid_output_on_fallback PASSED [ 76%]
+tests/test_phase3_integration.py::TestRealisticScenarios::test_furniture_assembly PASSED [ 77%]
+tests/test_phase3_integration.py::TestRealisticScenarios::test_electronics_assembly PASSED [ 78%]
+tests/test_phase3_performance.py::TestLLMLatency::test_llm_latency_small_assembly PASSED [ 80%]
+tests/test_phase3_performance.py::TestLLMLatency::test_llm_latency_medium_assembly PASSED [ 81%]
+tests/test_phase3_performance.py::TestLLMLatency::test_rules_based_latency_small PASSED [ 83%]
+tests/test_phase3_performance.py::TestTokenUsage::test_token_estimation_scales_linearly PASSED [ 84%]
+tests/test_phase3_performance.py::TestTokenUsage::test_token_usage_reasonable PASSED [ 85%]
+tests/test_phase3_performance.py::TestTokenUsage::test_token_count_with_tone_parameter PASSED [ 87%]
+tests/test_phase3_performance.py::TestCostEstimation::test_cost_scales_with_tokens PASSED [ 88%]
+tests/test_phase3_performance.py::TestCostEstimation::test_cost_reasonable_per_assembly PASSED [ 90%]
+tests/test_phase3_performance.py::TestCostEstimation::test_cost_comparison_different_models PASSED [ 91%]
+tests/test_phase3_performance.py::TestSVGGenerationPerformance::test_exploded_view_generation_latency PASSED [ 92%]
+tests/test_phase3_performance.py::TestSVGGenerationPerformance::test_svg_generation_large_assembly PASSED [ 94%]
+tests/test_phase3_performance.py::TestFullPipelinePerformance::test_full_pipeline_small_assembly PASSED [ 95%]
+tests/test_phase3_performance.py::TestFullPipelinePerformance::test_full_pipeline_medium_assembly PASSED [ 97%]
+tests/test_phase3_performance.py::TestMemoryEfficiency::test_large_assembly_doesnt_crash PASSED [ 98%]
+tests/test_phase3_performance.py::TestMemoryEfficiency::test_svg_generation_many_parts PASSED [100%]
+
+================================== FAILURES ===================================
+_________ TestAssemblyGeneratorWithLLM.test_llm_steps_have_llm_marker _________
+tests\test_assembly_generator_phase3.py:164: in test_llm_steps_have_llm_marker
+    assert any(step.is_llm_generated for step in result)
+E   assert False
+E    +  where False = any(<generator object TestAssemblyGeneratorWithLLM.test_llm_steps_have_llm_marker.<locals>.<genexpr> at 0x00000217D79C6330>)
+------------------------------ Captured log call ------------------------------
+ERROR    app.services.llm_assembly_generator:llm_assembly_generator.py:113 Unexpected error during LLM generation: LLMApiError.__init__() missing 1 required positional argument: 'reason'
+=========================== short test summary info ===========================
+FAILED tests/test_assembly_generator_phase3.py::TestAssemblyGeneratorWithLLM::test_llm_steps_have_llm_marker - assert False
+ +  where False = any(<generator object TestAssemblyGeneratorWithLLM.test_llm_steps_have_llm_marker.<locals>.<genexpr> at 0x00000217D79C6330>)
+======================== 1 failed, 70 passed in 21.35s ========================

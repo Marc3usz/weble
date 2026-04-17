@@ -139,7 +139,7 @@ class TestSvgGeneratorQuantityLabel:
 
     @pytest.mark.asyncio
     async def test_svg_content_includes_quantity_for_multiples(self, svg_generator, sample_parts):
-        """Test that SVG content includes quantity indicator for multiple parts."""
+        """Test that SVG content includes quantity indicator for multiple parts (Phase 2)."""
         result = await svg_generator.process(sample_parts)
-        # Part B should have quantity indicator
-        assert "×4" in result[1].svg_content
+        # Part B should have quantity indicator (in metadata block now: "QTY: 4")
+        assert "QTY: 4" in result[1].svg_content
