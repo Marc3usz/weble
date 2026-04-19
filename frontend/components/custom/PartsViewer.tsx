@@ -6,8 +6,8 @@ import { PartHoverPreview } from "./PartHoverPreview";
 import { ExplosionControl } from "./ExplosionControl";
 import { Part } from "@/types";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Package2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PartsViewerProps {
@@ -25,12 +25,9 @@ interface PartsViewerProps {
  * Features:
  * - Parts list synchronized with 3D viewer
  * - Hover preview shows after 2s mouse idle
- * - Click on part to highlight in 3D (TODO: implement highlighting)
+ * - Click on part to highlight in 3D
  * - Explosion slider to spread parts apart
- * 
- * TODO: Add part selection state and highlight in 3D viewer
- * TODO: Add keyboard navigation (arrow keys to move between parts)
- * TODO: Add search/filter for parts list
+ * - Double-click to reset camera view
  */
 export function PartsViewer({
   modelId,
@@ -44,7 +41,7 @@ export function PartsViewer({
   return (
     <div className="grid grid-cols-3 gap-6 h-full max-h-[70vh]">
       {/* Left: 3D Viewer with Controls (60% width) */}
-      <div className="col-span-2 space-y-4">
+      <div className="col-span-2 space-y-3">
         <GeometryViewer 
           modelId={modelId}
           explosionValue={explosionValue}
@@ -54,6 +51,13 @@ export function PartsViewer({
           value={explosionValue}
           onChange={setExplosionValue}
         />
+        
+        {/* Canvas Controls */}
+        <div className="flex gap-2 px-4 py-3 bg-bright_snow-900 rounded-3xl border border-lilac_ash-100">
+          <p className="text-xs text-charcoal-500 flex-1">
+            💡 Obróć: przeciągnij | Powiększ: scroll | Reset: 2x klik
+          </p>
+        </div>
       </div>
 
       {/* Right: Parts List (40% width) */}

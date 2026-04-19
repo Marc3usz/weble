@@ -338,18 +338,27 @@ export function GeometryViewer({
       return;
     }
 
+    // Smooth color transition for selected parts
+    const transitionSpeed = 0.1;
+
     meshesRef.current.forEach((mesh, partIndex) => {
       if (mesh.material && !Array.isArray(mesh.material)) {
         const material = mesh.material as THREE.MeshPhongMaterial;
+        const targetColor = partIndex === selectedPartId 
+          ? { r: 0.54, g: 0.42, b: 0.66 } // Dark purple: 0x8a6ba8
+          : { r: 0.8, g: 0.8, b: 0.8 }; // Light gray: 0xcccccc
 
+        // Smooth transition to target color
+        const currentColor = material.color;
+        currentColor.r += (targetColor.r - currentColor.r) * transitionSpeed;
+        currentColor.g += (targetColor.g - currentColor.g) * transitionSpeed;
+        currentColor.b += (targetColor.b - currentColor.b) * transitionSpeed;
+
+        // Add emissive glow for selected parts
         if (partIndex === selectedPartId) {
-          // Highlight selected part
-          material.color.setHex(0x8a6ba8); // Dark purple
-          material.emissive.setHex(0x5a4b78); // Glow effect
+          material.emissive.setHex(0x5a4b78);
         } else {
-          // Normal color for non-selected parts
-          material.color.setHex(0xcccccc); // Light gray
-          material.emissive.setHex(0x000000); // No glow
+          material.emissive.setHex(0x000000);
         }
       }
     });
