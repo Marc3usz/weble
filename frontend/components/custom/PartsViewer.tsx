@@ -34,7 +34,7 @@ export function PartsViewer({
   parts,
   isLoading = false,
 }: PartsViewerProps) {
-  const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
+  const [selectedPartIndex, setSelectedPartIndex] = useState<number | null>(null);
   const [hoveredPartId, setHoveredPartId] = useState<string | null>(null);
   const [explosionValue, setExplosionValue] = useState(0);
 
@@ -45,7 +45,7 @@ export function PartsViewer({
         <GeometryViewer 
           modelId={modelId}
           explosionValue={explosionValue}
-          selectedPartId={selectedPartId ? parseInt(selectedPartId.split('-')[1] || '0') : undefined}
+          selectedPartId={selectedPartIndex ?? undefined}
         />
         <ExplosionControl
           value={explosionValue}
@@ -69,9 +69,9 @@ export function PartsViewer({
                 key={part.id}
                 part={part}
                 index={index}
-                isSelected={selectedPartId === part.id}
+                isSelected={selectedPartIndex === index}
                 isHovered={hoveredPartId === part.id}
-                onSelect={() => setSelectedPartId(part.id)}
+                onSelect={() => setSelectedPartIndex(index)}
                 onHover={(isHovered) => {
                   setHoveredPartId(isHovered ? part.id : null);
                 }}
