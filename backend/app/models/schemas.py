@@ -182,6 +182,8 @@ class AssemblyStepSchema(BaseModel):
     part_indices: List[int]
     part_roles: Dict[int, str]
     context_part_indices: List[int]
+    svg_diagram: str = ""
+    exploded_view_svg: str = ""
     duration_minutes: int
     # Phase 3 additions
     assembly_sequence: List[str] = []

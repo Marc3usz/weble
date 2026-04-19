@@ -3,7 +3,7 @@ import logging
 import json
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.container import get_container, ServiceContainer
@@ -157,19 +157,19 @@ async def generate_parts_2d(
     """
     model_id = payload.get("modelId") or payload.get("model_id")
     if not model_id:
-        raise ValueError("modelId is required")
+        raise HTTPException(status_code=400, detail="modelId is required")
 
     repository = await container.get_repository()
 
     model = await repository.get_model(model_id)
     if model is None:
-        raise ValueError("Model not found")
+        raise HTTPException(status_code=404, detail="Model not found")
 
     parts = await repository.get_parts(model_id)
     if not parts:
         geometry = await repository.get_geometry(model_id)
         if geometry is None:
-            raise ValueError("Model geometry is not available")
+            raise HTTPException(status_code=400, detail="Model geometry is not available")
 
         extractor = PartsExtractorService()
         parts = await extractor.process(geometry)
@@ -199,6 +199,7 @@ async def generate_parts_2d(
 async def generate_assembly_analysis(
     payload: dict,
     preview_only: bool = False,
+    force_regenerate: bool = False,
     container: ServiceContainer = Depends(get_container),
 ) -> AssemblyResponse:
     """Generate or return assembly analysis for a model.
@@ -206,6 +207,7 @@ async def generate_assembly_analysis(
     Args:
         payload: Request body with model_id
         preview_only: If True, skip AI generation for faster preview
+        force_regenerate: If True, ignore cached steps and regenerate
         container: Service container with repository
 
     Returns:
@@ -238,6 +240,34 @@ async def generate_assembly_analysis(
         drawings = await SvgGeneratorService().process(parts)
         await repository.save_drawings(model_id, drawings)
 
+    if not force_regenerate:
+        cached_steps = await repository.get_steps(model_id)
+        if cached_steps:
+            return AssemblyResponse(
+                model_id=model_id,
+                steps=[
+                    AssemblyStepSchema(
+                        step_number=step.step_number,
+                        title=step.title,
+                        description=step.description,
+                        detail_description=step.detail_description,
+                        part_indices=step.part_indices,
+                        part_roles=step.part_roles,
+                        context_part_indices=step.context_part_indices,
+                        svg_diagram=step.svg_diagram,
+                        exploded_view_svg=step.exploded_view_svg,
+                        duration_minutes=step.duration_minutes,
+                        assembly_sequence=step.assembly_sequence,
+                        warnings=step.warnings,
+                        tips=step.tips,
+                        confidence_score=step.confidence_score,
+                        is_llm_generated=step.is_llm_generated,
+                    )
+                    for step in cached_steps
+                ],
+                total_steps=len(cached_steps),
+            )
+
     steps = await AssemblyGeneratorService().process(parts, drawings, preview_only=preview_only)
     await repository.save_steps(model_id, steps)
 
@@ -248,10 +278,18 @@ async def generate_assembly_analysis(
                 step_number=step.step_number,
                 title=step.title,
                 description=step.description,
+                detail_description=step.detail_description,
                 part_indices=step.part_indices,
                 part_roles=step.part_roles,
                 context_part_indices=step.context_part_indices,
+                svg_diagram=step.svg_diagram,
+                exploded_view_svg=step.exploded_view_svg,
                 duration_minutes=step.duration_minutes,
+                assembly_sequence=step.assembly_sequence,
+                warnings=step.warnings,
+                tips=step.tips,
+                confidence_score=step.confidence_score,
+                is_llm_generated=step.is_llm_generated,
             )
             for step in steps
         ],

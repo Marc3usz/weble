@@ -21,6 +21,7 @@ interface AssemblyPageContentProps {
 export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
   const [steps, setSteps] = useState<AssemblyStep[] | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
+  const [selectedPartIndex, setSelectedPartIndex] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,12 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
         setLoading(true);
         const response = await getAssembly(modelId);
         setSteps(response.steps);
+        if (response.steps.length > 0) {
+          const firstStep = response.steps[0];
+          const initialPart =
+            firstStep.part_indices?.[0] ?? firstStep.context_part_indices?.[0];
+          setSelectedPartIndex(initialPart);
+        }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Nie udało się załadować instrukcji";
@@ -50,29 +57,92 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
     alert("Eksport PDF nie jest jeszcze dostępny. Ta funkcja będzie wkrótce dodana.");
   };
 
+  const handlePreviousStep = () => {
+    if (!steps || steps.length === 0) return;
+    setCurrentStep((prev) => {
+      const next = Math.max(0, prev - 1);
+      const step = steps[next];
+      const defaultPart = step?.part_indices?.[0] ?? step?.context_part_indices?.[0];
+      setSelectedPartIndex(defaultPart);
+      return next;
+    });
+  };
+
+  const handleNextStep = () => {
+    if (!steps || steps.length === 0) return;
+    setCurrentStep((prev) => {
+      const next = Math.min(steps.length - 1, prev + 1);
+      const step = steps[next];
+      const defaultPart = step?.part_indices?.[0] ?? step?.context_part_indices?.[0];
+      setSelectedPartIndex(defaultPart);
+      return next;
+    });
+  };
+
   return (
     <main className="flex-1 flex flex-col min-h-screen px-4 py-4 bg-gradient-to-br from-bright_snow-900 via-bright_snow-700 to-lilac_ash-800">
       <div className="w-full max-w-7xl mx-auto space-y-4 flex-1">
         {/* Breadcrumb Navigation */}
         <Breadcrumb 
           items={[
-            { label: "Upload", href: "/upload" },
-            { label: `Model ${modelId.slice(0, 8)}...`, href: `/model/${modelId}` },
+            { label: "📤 Upload", href: "/upload" },
+            { label: `🧩 Model ${modelId.slice(0, 8)}...`, href: `/model/${modelId}` },
           ]}
-          currentPage="Instrukcje"
+          currentPage="🔧 Instrukcje"
+          actions={
+            <>
+              <Link href={`/parts/${modelId}`}>
+                <Button className="h-9 px-4 bg-lilac_ash-600 hover:bg-lilac_ash-700 text-bright_snow-900 font-semibold rounded-2xl transition-colors">
+                  📦 Części
+                </Button>
+              </Link>
+
+              <Button
+                onClick={handlePreviousStep}
+                disabled={!steps || currentStep === 0}
+                className="h-9 px-3 bg-lilac_ash-300 hover:bg-lilac_ash-400 text-charcoal-700 rounded-2xl disabled:opacity-50"
+              >
+                ←
+              </Button>
+
+              <Button
+                onClick={handleNextStep}
+                disabled={!steps || steps.length === 0 || currentStep >= steps.length - 1}
+                className="h-9 px-3 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 rounded-2xl disabled:opacity-50"
+              >
+                →
+              </Button>
+
+              <Button
+                onClick={handleExportSingleStep}
+                className="h-9 px-4 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-2xl transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  PDF Krok
+                </span>
+              </Button>
+
+              <Button
+                onClick={handleExportFullPDF}
+                className="h-9 px-4 bg-lilac_ash-400 hover:bg-lilac_ash-500 text-charcoal-800 font-semibold rounded-2xl transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  PDF Wszystkie
+                </span>
+              </Button>
+            </>
+          }
         />
 
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-charcoal-800">
-            🔧 Instrukcje montażu
-          </h1>
-          {steps && !loading && (
-            <p className="text-charcoal-700">
+        {steps && !loading && (
+          <div className="text-center">
+            <p className="text-charcoal-700 text-sm">
               Krok {currentStep + 1} z {steps.length}
             </p>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Error State */}
         {error && (
@@ -88,7 +158,15 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
         {/* Assembly Viewer - Two Column Layout with Step Carousel */}
         {!loading && steps && steps.length > 0 && (
           <div className="animate-in fade-in duration-500">
-            <AssemblyViewer modelId={modelId} steps={steps} />
+            <AssemblyViewer
+              modelId={modelId}
+              steps={steps}
+              currentStepIndex={currentStep}
+              onPreviousStep={handlePreviousStep}
+              onNextStep={handleNextStep}
+              currentPartIndex={selectedPartIndex}
+              onSelectPartIndex={setSelectedPartIndex}
+            />
           </div>
         )}
 
@@ -101,34 +179,6 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 justify-center xl:justify-end flex-wrap py-2">
-          <Link href={`/parts/${modelId}`}>
-            <Button className="px-7 py-5 bg-lilac_ash-600 hover:bg-lilac_ash-700 text-bright_snow-900 font-semibold rounded-3xl transition-colors shadow-md hover:shadow-lg">
-              📦 Części
-            </Button>
-          </Link>
-
-          <Button
-            onClick={handleExportSingleStep}
-            className="px-7 py-5 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl transition-colors shadow-md hover:shadow-lg"
-          >
-            <span className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              PDF - Krok
-            </span>
-          </Button>
-
-          <Button
-            onClick={handleExportFullPDF}
-            className="px-7 py-5 bg-lilac_ash-400 hover:bg-lilac_ash-500 text-charcoal-800 font-semibold rounded-3xl transition-colors shadow-md hover:shadow-lg"
-          >
-            <span className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              PDF - Wszystkie
-            </span>
-          </Button>
-        </div>
       </div>
     </main>
   );

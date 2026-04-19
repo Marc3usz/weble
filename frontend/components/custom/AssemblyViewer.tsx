@@ -12,6 +12,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 interface AssemblyViewerProps {
   modelId: string;
   steps: AssemblyStep[];
+  currentStepIndex: number;
+  onPreviousStep: () => void;
+  onNextStep: () => void;
+  currentPartIndex?: number;
+  onSelectPartIndex?: (partIndex: number) => void;
   isLoading?: boolean;
 }
 
@@ -35,24 +40,33 @@ interface AssemblyViewerProps {
 export function AssemblyViewer({
   modelId,
   steps,
+  currentStepIndex,
+  onPreviousStep,
+  onNextStep,
+  currentPartIndex,
+  onSelectPartIndex,
   isLoading = false,
 }: AssemblyViewerProps) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const currentStep = steps[currentStepIndex];
 
-  const handlePreviousStep = () => {
-    setCurrentStepIndex(Math.max(0, currentStepIndex - 1));
-  };
+  const activePartIndex =
+    currentPartIndex ??
+    currentStep.part_indices?.[0] ??
+    currentStep.context_part_indices?.[0];
 
-  const handleNextStep = () => {
-    setCurrentStepIndex(Math.min(steps.length - 1, currentStepIndex + 1));
-  };
+  const highlightedPartIndices = Array.from(
+    new Set([...(currentStep.context_part_indices ?? []), ...(currentStep.part_indices ?? [])])
+  );
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 h-full max-h-[calc(100vh-15rem)] min-h-[560px]">
       {/* Left: 3D Viewer (60% width) */}
       <div className="xl:col-span-2 min-h-0">
-        <GeometryViewer modelId={modelId} />
+        <GeometryViewer
+          modelId={modelId}
+          selectedPartId={activePartIndex}
+          selectedPartIds={highlightedPartIndices}
+        />
       </div>
 
       {/* Right: Step Carousel (40% width) */}
@@ -80,30 +94,72 @@ export function AssemblyViewer({
                  <p className="text-xs font-medium text-charcoal-600 uppercase">
                    Role części
                  </p>
-            <div className="flex flex-wrap gap-2">
+           <div className="flex flex-wrap gap-2">
               {Object.entries(currentStep.part_roles).map(([index, role]) => (
                 <Badge
                   key={index}
                   variant="secondary"
-                  className="rounded-full bg-lilac_ash-300 text-charcoal-700 text-xs"
+                  onClick={() => onSelectPartIndex?.(Number(index))}
+                  className="rounded-full bg-lilac_ash-300 text-charcoal-700 text-xs cursor-pointer hover:bg-lilac_ash-400"
                 >
                   {role}
                 </Badge>
               ))}
-                 </div>
-               </div>
-             )}
+                  </div>
+                </div>
+              )}
+
+              {currentStep.detail_description && (
+                <div className="mt-4 p-3 rounded-2xl bg-bright_snow-800">
+                  <p className="text-xs text-charcoal-700 leading-relaxed">
+                    {currentStep.detail_description}
+                  </p>
+                </div>
+              )}
+
+              {currentStep.assembly_sequence && currentStep.assembly_sequence.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs font-medium text-charcoal-600 uppercase">Sekwencja</p>
+                  <ol className="text-xs text-charcoal-700 space-y-1 list-decimal pl-4">
+                    {currentStep.assembly_sequence.map((item, idx) => (
+                      <li key={`${item}-${idx}`}>{item}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {currentStep.warnings && currentStep.warnings.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs font-medium text-charcoal-600 uppercase">Uwagi</p>
+                  <ul className="text-xs text-charcoal-700 space-y-1 list-disc pl-4">
+                    {currentStep.warnings.map((item, idx) => (
+                      <li key={`${item}-${idx}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {currentStep.tips && currentStep.tips.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-xs font-medium text-charcoal-600 uppercase">Wskazówki</p>
+                  <ul className="text-xs text-charcoal-700 space-y-1 list-disc pl-4">
+                    {currentStep.tips.map((item, idx) => (
+                      <li key={`${item}-${idx}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
              {/* SVG Diagram Viewer */}
-             {currentStep.svg_diagram && (
-               <div className="mt-4">
-                 <SvgViewer
-                   svgContent={currentStep.svg_diagram}
-                   title={`Diagram - ${currentStep.title}`}
-                   triggerLabel="📊 Diagram"
-                 />
-               </div>
-             )}
+              {(currentStep.exploded_view_svg || currentStep.svg_diagram) && (
+                <div className="mt-4">
+                  <SvgViewer
+                    svgContent={currentStep.exploded_view_svg || currentStep.svg_diagram || ""}
+                    title={`Diagram - ${currentStep.title}`}
+                    triggerLabel="📊 Diagram"
+                  />
+                </div>
+              )}
            </div>
 
           {/* Step Counter & Navigation */}
@@ -128,7 +184,7 @@ export function AssemblyViewer({
             {/* Navigation Buttons */}
             <div className="flex gap-3">
               <Button
-                onClick={handlePreviousStep}
+                onClick={onPreviousStep}
                 disabled={currentStepIndex === 0}
                 className="flex-1 rounded-3xl bg-lilac_ash-200 hover:bg-lilac_ash-300 text-charcoal-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -136,7 +192,7 @@ export function AssemblyViewer({
               </Button>
 
               <Button
-                onClick={handleNextStep}
+                onClick={onNextStep}
                 disabled={currentStepIndex === steps.length - 1}
                 className="flex-1 rounded-3xl bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >

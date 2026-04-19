@@ -209,6 +209,7 @@ interface GeometryViewerProps {
   onError?: (error: Error) => void;
   explosionValue?: number;
   selectedPartId?: number;
+  selectedPartIds?: number[];
 }
 
 /**
@@ -238,6 +239,7 @@ export function GeometryViewer({
   onError,
   explosionValue = 0,
   selectedPartId,
+  selectedPartIds,
 }: GeometryViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -563,11 +565,18 @@ export function GeometryViewer({
 
     const solids = geometry?.metadata?.solids ?? [];
     const partToSolidCandidates = parts ? mapPartsToSolidIndices(parts, solids) : new Map<number, number[]>();
-    const selectedSolidSet = new Set<number>(
-      selectedPartId !== undefined && selectedPartId !== null
-        ? (partToSolidCandidates.get(selectedPartId) ?? [])
-        : []
-    );
+    const selectedSolidSet = new Set<number>();
+
+    const allSelectedPartIds = new Set<number>([
+      ...(selectedPartIds ?? []),
+      ...(selectedPartId !== undefined && selectedPartId !== null ? [selectedPartId] : []),
+    ]);
+
+    allSelectedPartIds.forEach((partIndex) => {
+      (partToSolidCandidates.get(partIndex) ?? []).forEach((solidIndex) => {
+        selectedSolidSet.add(solidIndex);
+      });
+    });
 
     meshesRef.current.forEach((mesh, solidIndex) => {
       if (mesh.material && !Array.isArray(mesh.material)) {
@@ -585,7 +594,7 @@ export function GeometryViewer({
       }
     });
 
-  }, [selectedPartId, geometry, parts]);
+  }, [selectedPartId, selectedPartIds, geometry, parts]);
 
   useEffect(() => {
     controlsRef.current?.setMode(orbitMode);

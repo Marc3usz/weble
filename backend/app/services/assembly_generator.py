@@ -1,6 +1,7 @@
 """Stage 4: Assembly Instruction Generation Service with Phase 3 LLM Support."""
 
 import logging
+from urllib.parse import quote
 from collections import defaultdict
 from typing import List, Optional
 
@@ -28,7 +29,18 @@ class AssemblyGeneratorService(PipelineStage):
     def __init__(self, llm_service: Optional["LLMAssemblyGeneratorService"] = None) -> None:  # noqa: F821
         self.name = "AssemblyGeneratorService"
         self.logger = logging.getLogger(__name__)
-        self.llm_service = llm_service
+        if llm_service is not None:
+            self.llm_service = llm_service
+        elif settings.assembly_llm_enabled:
+            try:
+                from app.services.llm_assembly_generator import LLMAssemblyGeneratorService
+
+                self.llm_service = LLMAssemblyGeneratorService()
+            except Exception as e:
+                self.logger.warning(f"Could not initialize LLM assembly generator: {e}")
+                self.llm_service = None
+        else:
+            self.llm_service = None
 
     async def validate_input(self, data: tuple) -> bool:
         """Validate parts and drawings."""
@@ -85,6 +97,8 @@ class AssemblyGeneratorService(PipelineStage):
                 svg_gen = ExplodedViewSVGGenerator()
                 for step in steps:
                     step.exploded_view_svg = await svg_gen.generate_exploded_view(parts, step)
+                    if step.exploded_view_svg:
+                        step.svg_diagram = step.exploded_view_svg
                 self.logger.info(f"Generated {len(steps)} steps using LLM")
                 return steps
             except Exception as e:
@@ -103,6 +117,8 @@ class AssemblyGeneratorService(PipelineStage):
             svg_gen = ExplodedViewSVGGenerator()
             for step in steps:
                 step.exploded_view_svg = await svg_gen.generate_exploded_view(parts, step)
+                if step.exploded_view_svg:
+                    step.svg_diagram = step.exploded_view_svg
         except Exception as e:
             self.logger.warning(f"Could not generate exploded views: {e}")
 
@@ -210,81 +226,145 @@ class AssemblyGeneratorService(PipelineStage):
                 )
             ]
 
-        # Step 1: Frame assembly
+        # Step 1..N: Interleaved frame + connector steps for practical build order
         if frame_indices:
-            active = frame_indices[: min(3, len(frame_indices))]
-            title, desc, detail = self._get_step_text(tone, "frame")
-            steps.append(
-                AssemblyStep(
-                    step_number=current_step,
-                    title=title,
-                    description=desc,
-                    detail_description=detail,
-                    part_indices=active,
-                    part_roles={idx: "frame component" for idx in active},
-                    context_part_indices=[],
-                    assembly_sequence=["Align", "Secure"],
-                    warnings=self._get_step_warnings(tone, "frame"),
-                    tips=self._get_step_tips(tone, "frame"),
-                    svg_diagram=self._simple_step_svg("Frame", active),
-                    duration_minutes=8,
-                    confidence_score=0.7,
-                    is_llm_generated=False,
-                )
-            )
-            current_step += 1
+            frame_chunk_size = 3
+            frame_chunks = [
+                frame_indices[i : i + frame_chunk_size]
+                for i in range(0, len(frame_indices), frame_chunk_size)
+            ]
+            connector_chunk_size = 3
+            connector_chunks = [
+                connector_indices[i : i + connector_chunk_size]
+                for i in range(0, len(connector_indices), connector_chunk_size)
+            ]
 
-        # Step 2: Hardware and fasteners
-        if connector_indices:
-            context = frame_indices[: min(3, len(frame_indices))]
-            active = connector_indices[: min(5, len(connector_indices))]
+            frame_context: List[int] = []
+            for chunk_idx, active in enumerate(frame_chunks):
+                title, desc, detail = self._get_step_text(tone, "frame")
+                if len(frame_chunks) > 1:
+                    title = f"{title} ({chunk_idx + 1}/{len(frame_chunks)})"
+
+                active_roles = {
+                    idx: self._role_for_part(parts[idx], "frame component") for idx in active
+                }
+
+                steps.append(
+                    AssemblyStep(
+                        step_number=current_step,
+                        title=title,
+                        description=self._build_step_description(parts, active, desc),
+                        detail_description=self._build_step_detail(parts, active, detail),
+                        part_indices=active,
+                        part_roles=active_roles,
+                        context_part_indices=frame_context.copy(),
+                        assembly_sequence=["Align", "Secure"],
+                        warnings=self._get_step_warnings(tone, "frame"),
+                        tips=self._get_step_tips(tone, "frame"),
+                        svg_diagram=self._simple_step_svg("Frame", active),
+                        duration_minutes=6,
+                        confidence_score=0.7,
+                        is_llm_generated=False,
+                    )
+                )
+                frame_context.extend(active)
+                current_step += 1
+
+                # Insert connector step right after each frame chunk when available
+                if chunk_idx < len(connector_chunks):
+                    conn_active = connector_chunks[chunk_idx]
+                    conn_title, conn_desc, conn_detail = self._get_step_text(tone, "hardware")
+                    if len(connector_chunks) > 1:
+                        conn_title = f"{conn_title} ({chunk_idx + 1}/{len(connector_chunks)})"
+                    conn_roles = {
+                        idx: self._role_for_part(parts[idx], "connector") for idx in conn_active
+                    }
+                    steps.append(
+                        AssemblyStep(
+                            step_number=current_step,
+                            title=conn_title,
+                            description=self._build_step_description(parts, conn_active, conn_desc),
+                            detail_description=self._build_step_detail(parts, conn_active, conn_detail),
+                            part_indices=conn_active,
+                            part_roles=conn_roles,
+                            context_part_indices=frame_context.copy(),
+                            assembly_sequence=["Locate holes", "Insert connector", "Tighten lightly"],
+                            warnings=self._get_step_warnings(tone, "hardware"),
+                            tips=self._get_step_tips(tone, "hardware"),
+                            svg_diagram=self._simple_step_svg("Hardware", conn_active),
+                            duration_minutes=6,
+                            confidence_score=0.7,
+                            is_llm_generated=False,
+                        )
+                    )
+                    frame_context.extend(conn_active)
+                    current_step += 1
+
+        # Remaining connectors not yet consumed
+        consumed_connectors = {idx for step in steps for idx in step.part_indices if idx in connector_indices}
+        remaining_connectors = [idx for idx in connector_indices if idx not in consumed_connectors]
+        if remaining_connectors:
             title, desc, detail = self._get_step_text(tone, "hardware")
+            active_roles = {
+                idx: self._role_for_part(parts[idx], "connector") for idx in remaining_connectors
+            }
+            context = frame_indices + [idx for idx in connector_indices if idx in consumed_connectors]
             steps.append(
                 AssemblyStep(
                     step_number=current_step,
                     title=title,
-                    description=desc,
-                    detail_description=detail,
-                    part_indices=active,
-                    part_roles={idx: "connector" for idx in active},
+                    description=self._build_step_description(parts, remaining_connectors, desc),
+                    detail_description=self._build_step_detail(parts, remaining_connectors, detail),
+                    part_indices=remaining_connectors,
+                    part_roles=active_roles,
                     context_part_indices=context,
-                    assembly_sequence=["Position", "Tighten"],
+                    assembly_sequence=["Insert connector", "Tighten", "Verify joint"],
                     warnings=self._get_step_warnings(tone, "hardware"),
                     tips=self._get_step_tips(tone, "hardware"),
-                    svg_diagram=self._simple_step_svg("Hardware", active),
-                    duration_minutes=10,
+                    svg_diagram=self._simple_step_svg("Hardware", remaining_connectors),
+                    duration_minutes=6,
                     confidence_score=0.7,
                     is_llm_generated=False,
                 )
             )
             current_step += 1
 
-        # Step 3: Remaining components
+        # Remaining components in chunks
         if other_indices:
-            context = (
-                frame_indices[: min(3, len(frame_indices))]
-                + connector_indices[: min(3, len(connector_indices))]
-            )
-            active = other_indices[: min(4, len(other_indices))]
-            title, desc, detail = self._get_step_text(tone, "remaining")
-            steps.append(
-                AssemblyStep(
-                    step_number=current_step,
-                    title=title,
-                    description=desc,
-                    detail_description=detail,
-                    part_indices=active,
-                    part_roles={idx: "secondary component" for idx in active},
-                    context_part_indices=context,
-                    assembly_sequence=["Mount", "Verify"],
-                    warnings=self._get_step_warnings(tone, "remaining"),
-                    tips=self._get_step_tips(tone, "remaining"),
-                    svg_diagram=self._simple_step_svg("Finalize", active),
-                    duration_minutes=7,
-                    confidence_score=0.7,
-                    is_llm_generated=False,
+            other_chunk_size = 4
+            other_chunks = [
+                other_indices[i : i + other_chunk_size]
+                for i in range(0, len(other_indices), other_chunk_size)
+            ]
+            context = frame_indices + connector_indices
+            for chunk_idx, active in enumerate(other_chunks):
+                title, desc, detail = self._get_step_text(tone, "remaining")
+                if len(other_chunks) > 1:
+                    title = f"{title} ({chunk_idx + 1}/{len(other_chunks)})"
+
+                active_roles = {
+                    idx: self._role_for_part(parts[idx], "secondary component") for idx in active
+                }
+                steps.append(
+                    AssemblyStep(
+                        step_number=current_step,
+                        title=title,
+                        description=self._build_step_description(parts, active, desc),
+                        detail_description=self._build_step_detail(parts, active, detail),
+                        part_indices=active,
+                        part_roles=active_roles,
+                        context_part_indices=context.copy(),
+                        assembly_sequence=["Mount", "Verify"],
+                        warnings=self._get_step_warnings(tone, "remaining"),
+                        tips=self._get_step_tips(tone, "remaining"),
+                        svg_diagram=self._simple_step_svg("Finalize", active),
+                        duration_minutes=6,
+                        confidence_score=0.7,
+                        is_llm_generated=False,
+                    )
                 )
-            )
+                context.extend(active)
+                current_step += 1
 
         if not steps:
             steps = [
@@ -300,6 +380,9 @@ class AssemblyGeneratorService(PipelineStage):
                     is_llm_generated=False,
                 )
             ]
+
+        for step in steps:
+            step.svg_diagram = self._compose_step_svg_from_drawings(step, drawings)
 
         return steps
 
@@ -411,6 +494,82 @@ class AssemblyGeneratorService(PipelineStage):
             },
         }
         return tips_map.get(step_type, {}).get(tone, [])
+
+    def _build_step_description(self, parts: List[Part], indices: List[int], base: str) -> str:
+        names = [self._part_short_name(parts[idx]) for idx in indices if 0 <= idx < len(parts)]
+        if not names:
+            return base
+        return f"{base}. Części w tym kroku: {', '.join(names)}."
+
+    def _build_step_detail(self, parts: List[Part], indices: List[int], base: str) -> str:
+        details = []
+        for idx in indices:
+            if 0 <= idx < len(parts):
+                p = parts[idx]
+                d = p.dimensions
+                details.append(
+                    f"{p.id}: {p.part_type.value} {d.get('width', 0):.0f}×{d.get('height', 0):.0f}×{d.get('depth', 0):.0f}"
+                )
+        if not details:
+            return base
+        return f"{base} {'; '.join(details)}."
+
+    def _compose_step_svg_from_drawings(self, step: AssemblyStep, drawings: List[SvgDrawing]) -> str:
+        active = step.part_indices[:4]
+        if not active:
+            return self._simple_step_svg(step.title, step.part_indices)
+
+        card_w = 220
+        card_h = 160
+        pad = 16
+        cols = min(2, max(1, len(active)))
+        rows = (len(active) + cols - 1) // cols
+        width = cols * card_w + (cols + 1) * pad
+        height = rows * card_h + (rows + 1) * pad + 34
+
+        svg = [
+            f"<svg width='{width}' height='{height}' xmlns='http://www.w3.org/2000/svg'>",
+            f"<rect x='0' y='0' width='{width}' height='{height}' fill='white' stroke='#ddd'/>",
+            f"<text x='{pad}' y='22' font-size='14' font-family='Arial' font-weight='bold'>{step.title}</text>",
+        ]
+
+        for i, idx in enumerate(active):
+            if idx < 0 or idx >= len(drawings):
+                continue
+            x = pad + (i % cols) * (card_w + pad)
+            y = 34 + pad + (i // cols) * (card_h + pad)
+            part_svg = drawings[idx].svg_content
+            data_uri = f"data:image/svg+xml;utf8,{quote(part_svg)}"
+            svg.append(f"<rect x='{x}' y='{y}' width='{card_w}' height='{card_h}' fill='#fafafa' stroke='#bbb'/>")
+            svg.append(
+                f"<image href=\"{data_uri}\" x='{x + 4}' y='{y + 4}' width='{card_w - 8}' height='{card_h - 8}' preserveAspectRatio='xMidYMid meet' />"
+            )
+
+        svg.append("</svg>")
+        return "".join(svg)
+
+    @staticmethod
+    def _part_short_name(part: Part) -> str:
+        d = part.dimensions
+        return f"{part.part_type.value} {d.get('width', 0):.0f}×{d.get('height', 0):.0f}×{d.get('depth', 0):.0f}"
+
+    @staticmethod
+    def _role_for_part(part: Part, fallback: str) -> str:
+        """Create a more informative role label from part metadata."""
+        dims = part.dimensions or {}
+        w = float(dims.get("width", 0))
+        h = float(dims.get("height", 0))
+        d = float(dims.get("depth", 0))
+
+        dims_sorted = sorted([w, h, d], reverse=True)
+        longest = dims_sorted[0] if dims_sorted else 0
+        shortest = dims_sorted[-1] if dims_sorted else 0
+
+        label = part.part_type.value
+        if longest > 0 and shortest > 0 and (longest / max(shortest, 1e-6)) > 4:
+            label = f"{label} panel"
+
+        return f"{label} ({w:.0f}×{h:.0f}×{d:.0f})" if w and h and d else fallback
 
     @staticmethod
     def _simple_step_svg(title: str, indices: List[int]) -> str:

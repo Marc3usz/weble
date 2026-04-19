@@ -3,6 +3,7 @@ import {
   UploadResponse,
   PartsResponse,
   AssemblyResponse,
+  AssemblyStep,
   Geometry,
   ProgressEvent,
   Part,
@@ -53,6 +54,18 @@ function generatePartName(part: any): string {
   }
 
   return typeName;
+}
+
+function generateAssemblyRoleLabel(part: any): string {
+  const partName = generatePartName(part);
+  const dims = part.dimensions || {};
+  const width = Math.round(dims.width || dims.w || 0);
+  const height = Math.round(dims.height || dims.h || 0);
+  const depth = Math.round(dims.depth || dims.d || 0);
+  if (width && height && depth) {
+    return `${partName} (${width}×${height}×${depth})`;
+  }
+  return partName;
 }
 
 const apiClient = axios.create({
@@ -140,11 +153,35 @@ export async function getParts(modelId: string): Promise<PartsResponse> {
 // Get assembly steps for a model
 export async function getAssembly(modelId: string): Promise<AssemblyResponse> {
   const response = await apiClient.post<AssemblyResponse>(
-    "/api/v1/step/assembly-analysis",
+    "/api/v1/step/assembly-analysis?force_regenerate=true",
     { model_id: modelId }
   );
 
-  return response.data;
+  const partsResponse = await getParts(modelId);
+  const partByIndex = new Map<number, Part>();
+  partsResponse.parts.forEach((part, index) => {
+    partByIndex.set(index, part);
+  });
+
+  const enrichedSteps: AssemblyStep[] = response.data.steps.map((step) => {
+    const partRoles: Record<string, string> = {};
+    if (step.part_roles) {
+      Object.entries(step.part_roles).forEach(([key]) => {
+        const part = partByIndex.get(Number(key));
+        partRoles[key] = part ? generateAssemblyRoleLabel(part) : step.part_roles?.[key] || `Part ${key}`;
+      });
+    }
+
+    return {
+      ...step,
+      part_roles: Object.keys(partRoles).length > 0 ? partRoles : step.part_roles,
+    };
+  });
+
+  return {
+    ...response.data,
+    steps: enrichedSteps,
+  };
 }
 
 // Get geometry (3D model)

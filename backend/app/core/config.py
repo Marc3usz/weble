@@ -79,13 +79,13 @@ class Settings(BaseSettings):
 
     # LLM
     llm_timeout_seconds: int = 30
-    llm_model: str = "google/gemini-pro"
+    llm_model: str = "openai/gpt-4.1"
     llm_max_tokens: int = 2000
 
     # Phase 3: Assembly Instructions
     assembly_llm_enabled: bool = True
     assembly_tone: AssemblyTone = AssemblyTone.IKEA
-    assembly_llm_model: str = "google/gemini-2.0-flash"  # Faster/cheaper variant
+    assembly_llm_model: str = "openai/gpt-4.1"  # Higher-quality assembly reasoning
 
     # SSE (Server-Sent Events)
     sse_heartbeat_seconds: int = 2  # Progress update interval
