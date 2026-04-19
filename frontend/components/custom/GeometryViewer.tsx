@@ -230,9 +230,9 @@ export function GeometryViewer({
          return;
        }
 
-      // Scene setup
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xfafaf8); // Light background
+       // Scene setup
+       const scene = new THREE.Scene();
+       scene.background = new THREE.Color(0xf8faf9); // Bright snow 700 background
 
       // Camera setup
       const camera = new THREE.PerspectiveCamera(

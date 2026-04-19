@@ -66,22 +66,22 @@ export function PartHoverPreview({
     <div
       className="absolute left-full top-0 ml-3 z-50 animate-in fade-in duration-300 pointer-events-none"
     >
-      <Card className="rounded-3xl p-4 bg-white border border-lilac_ash-200 shadow-lg min-w-[250px]">
+      <Card className="rounded-3xl p-4 bg-bright_snow-800 border border-lilac_ash-400 shadow-lg min-w-[250px]">
          {/* Part Image - Placeholder Icon (no SVG in backend) */}
-         <div className="w-full h-32 bg-lilac_ash-50 rounded-2xl mb-3 flex items-center justify-center">
-           <Package2 className="w-12 h-12 text-lilac_ash-300" />
+         <div className="w-full h-32 bg-lilac_ash-300 rounded-2xl mb-3 flex items-center justify-center">
+           <Package2 className="w-12 h-12 text-lilac_ash-500" />
          </div>
 
          {/* Part Details */}
          <div className="space-y-2">
-           <h4 className="font-semibold text-black-DEFAULT text-sm line-clamp-2">
+           <h4 className="font-semibold text-charcoal-700 text-sm line-clamp-2">
              {part.name}
            </h4>
 
            {/* Quantity Badge */}
            <Badge
              variant="secondary"
-             className="rounded-full bg-lilac_ash-100 text-lilac_ash-600 text-xs"
+             className="rounded-full bg-lilac_ash-300 text-charcoal-700 text-xs"
            >
              Ilość: ×{part.quantity}
            </Badge>
@@ -89,16 +89,16 @@ export function PartHoverPreview({
            {/* Part Type */}
            {part.part_type && (
              <div className="text-xs">
-               <span className="font-medium text-black-DEFAULT">Typ:</span>{" "}
-               <span className="text-charcoal-500">{part.part_type}</span>
+               <span className="font-medium text-charcoal-700">Typ:</span>{" "}
+               <span className="text-charcoal-600">{part.part_type}</span>
              </div>
            )}
 
           {/* Dimensions */}
           {part.dimensions && (
             <div className="text-xs space-y-1">
-              <p className="font-medium text-black-DEFAULT">Wymiary:</p>
-              <ul className="text-charcoal-500 pl-3">
+              <p className="font-medium text-charcoal-700">Wymiary:</p>
+              <ul className="text-charcoal-600 pl-3">
                 <li>
                   • Szerokość: {part.dimensions.width.toFixed(2)} mm
                 </li>
@@ -115,8 +115,8 @@ export function PartHoverPreview({
           {/* Volume */}
           {part.volume && (
             <div className="text-xs">
-              <span className="font-medium text-black-DEFAULT">Objętość:</span>{" "}
-              <span className="text-charcoal-500">
+              <span className="font-medium text-charcoal-700">Objętość:</span>{" "}
+              <span className="text-charcoal-600">
                 {part.volume.toFixed(2)} cm³
               </span>
             </div>

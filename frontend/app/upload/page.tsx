@@ -92,7 +92,7 @@ export default function UploadPage() {
         </div>
 
         {/* Upload Card */}
-        <Card className="rounded-3xl p-12 bg-lilac_ash-50 border border-lilac_ash-200">
+        <Card className="rounded-3xl p-12 bg-lilac_ash-300 border border-lilac_ash-500">
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
@@ -100,17 +100,17 @@ export default function UploadPage() {
           >
             {/* Upload Icon */}
             <div className="flex justify-center">
-              <div className="p-4 bg-lilac_ash-100 rounded-3xl">
-                <Upload className="w-12 h-12 text-lilac_ash-500" />
+              <div className="p-4 bg-lilac_ash-500 rounded-3xl">
+                <Upload className="w-12 h-12 text-bright_snow-800" />
               </div>
             </div>
 
             {/* Upload Text */}
             <div className="space-y-2">
-              <p className="text-lg font-semibold text-black-DEFAULT">
+              <p className="text-lg font-semibold text-charcoal-800">
                 Przeciągnij plik tutaj lub kliknij aby wybrać
               </p>
-              <p className="text-sm text-charcoal-600">
+              <p className="text-sm text-charcoal-700">
                 Akceptowane pliki: .step
               </p>
             </div>
@@ -128,7 +128,7 @@ export default function UploadPage() {
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="outline"
-              className="px-6 py-2 rounded-3xl border-lilac_ash-400 text-lilac_ash-600 hover:bg-lilac_ash-50 hover:border-lilac_ash-500 transition-colors"
+              className="px-6 py-2 rounded-3xl border-lilac_ash-600 text-charcoal-700 bg-lilac_ash-200 hover:bg-lilac_ash-400 hover:border-lilac_ash-700 transition-colors"
             >
               Wybierz plik
             </Button>
@@ -137,14 +137,14 @@ export default function UploadPage() {
 
         {/* Selected File Display */}
         {selectedFile && !success && (
-          <Card className="rounded-3xl p-6 bg-lilac_ash-100 border-lilac_ash-300">
+          <Card className="rounded-3xl p-6 bg-lilac_ash-200 border-lilac_ash-500">
             <div className="flex items-center gap-4">
               <CheckCircle className="w-6 h-6 text-lilac_ash-600 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-black-DEFAULT truncate">
+                <p className="font-semibold text-charcoal-800 truncate">
                   {selectedFile.name}
                 </p>
-                <p className="text-sm text-charcoal-600">
+                <p className="text-sm text-charcoal-700">
                   {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
@@ -164,9 +164,9 @@ export default function UploadPage() {
 
         {/* Success Alert */}
         {success && (
-          <Alert className="border-lilac_ash-300 bg-lilac_ash-50 rounded-3xl">
-            <CheckCircle className="h-4 w-4 text-lilac_ash-600" />
-            <AlertDescription className="text-lilac_ash-700">
+          <Alert className="border-lilac_ash-500 bg-lilac_ash-300 rounded-3xl">
+            <CheckCircle className="h-4 w-4 text-lilac_ash-700" />
+            <AlertDescription className="text-lilac_ash-800">
               Plik przesłany pomyślnie! Przekierowuję...
             </AlertDescription>
           </Alert>

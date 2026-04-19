@@ -53,8 +53,8 @@ export function PartsViewer({
         />
         
         {/* Canvas Controls */}
-        <div className="flex gap-2 px-4 py-3 bg-bright_snow-900 rounded-3xl border border-lilac_ash-100">
-          <p className="text-xs text-charcoal-500 flex-1">
+        <div className="flex gap-2 px-4 py-3 bg-lilac_ash-200 rounded-3xl border border-lilac_ash-400">
+          <p className="text-xs text-charcoal-700 flex-1">
             💡 Obróć: przeciągnij | Powiększ: scroll | Reset: 2x klik
           </p>
         </div>
@@ -62,7 +62,7 @@ export function PartsViewer({
 
       {/* Right: Parts List (40% width) */}
       <div className="col-span-1">
-        <div className="h-full rounded-3xl bg-bright_snow-700 border border-lilac_ash-200 p-4 overflow-y-auto">
+        <div className="h-full rounded-3xl bg-bright_snow-700 border border-lilac_ash-300 p-4 overflow-y-auto">
           <div className="space-y-3">
             {parts.map((part, index) => (
               <PartListItem
@@ -119,11 +119,12 @@ function PartListItem({
         onMouseEnter={() => onHover(true)}
         onMouseLeave={() => onHover(false)}
         className={cn(
-          "p-4 cursor-pointer transition-all rounded-3xl",
+          "p-4 cursor-pointer transition-all rounded-3xl border-2",
           isSelected
-            ? "bg-lilac_ash-100 border-lilac_ash-500 border-2"
-            : "bg-white border border-lilac_ash-200 hover:border-lilac_ash-400",
-          isHovered && "shadow-lg"
+            ? "bg-lilac_ash-300 border-lilac_ash-500 shadow-md"
+            : isHovered
+            ? "bg-lilac_ash-200 border-lilac_ash-400 shadow-lg"
+            : "bg-bright_snow-800 border-lilac_ash-300 hover:border-lilac_ash-400"
         )}
       >
         <div className="flex items-start gap-3">
@@ -131,18 +132,26 @@ function PartListItem({
           <div className={cn(
             "w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 text-sm font-semibold",
             isSelected
-              ? "bg-lilac_ash-300 text-lilac_ash-700"
-              : "bg-lilac_ash-100 text-lilac_ash-600"
+              ? "bg-lilac_ash-500 text-bright_snow-800"
+              : isHovered
+              ? "bg-lilac_ash-400 text-bright_snow-900"
+              : "bg-lilac_ash-200 text-lilac_ash-600"
           )}>
             {index + 1}
           </div>
 
           {/* Part Info */}
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-black-DEFAULT line-clamp-1">
+            <h4 className={cn(
+              "text-sm font-semibold line-clamp-1",
+              isSelected ? "text-lilac_ash-900" : "text-charcoal-700"
+            )}>
               {part.name}
             </h4>
-            <p className="text-xs text-charcoal-600 mt-1">
+            <p className={cn(
+              "text-xs mt-1",
+              isSelected ? "text-lilac_ash-700" : "text-charcoal-600"
+            )}>
               ×{part.quantity}
             </p>
           </div>
