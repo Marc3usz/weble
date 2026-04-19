@@ -9,10 +9,102 @@ import {
 } from "@/utils/geometry";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Simple OrbitControls implementation (no external dependency needed)
+function createOrbitControls(camera: THREE.PerspectiveCamera, element: HTMLElement) {
+  const STATE = { NONE: -1, ROTATE: 0, ZOOM: 1, PAN: 2 };
+  let state = STATE.NONE;
+
+  const euler = new THREE.Euler(0, 0, 0, "YXZ");
+  const vector = new THREE.Vector3();
+  const normalizedVector = new THREE.Vector3();
+
+  let phi = 0;
+  let theta = 0;
+  let radius = camera.position.length();
+
+  const onMouseDown = (event: MouseEvent) => {
+    if (event.button === 0) state = STATE.ROTATE;
+    if (event.button === 2) state = STATE.PAN;
+  };
+
+  const onMouseMove = (event: MouseEvent) => {
+    if (state === STATE.ROTATE) {
+      const deltaX = (event.clientX - (onMouseDown as any).clientX) * 0.01;
+      const deltaY = (event.clientY - (onMouseDown as any).clientY) * 0.01;
+
+      theta -= deltaX;
+      phi -= deltaY;
+      phi = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, phi));
+
+      const x = radius * Math.sin(phi) * Math.cos(theta);
+      const y = radius * Math.cos(phi);
+      const z = radius * Math.sin(phi) * Math.sin(theta);
+
+      camera.position.set(x, y, z);
+      camera.lookAt(0, 0, 0);
+
+      (onMouseDown as any).clientX = event.clientX;
+      (onMouseDown as any).clientY = event.clientY;
+    }
+  };
+
+  const onMouseUp = () => {
+    state = STATE.NONE;
+  };
+
+  const onWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    const zoomSpeed = 0.1;
+    radius += event.deltaY > 0 ? zoomSpeed : -zoomSpeed;
+    radius = Math.max(2, Math.min(50, radius));
+
+    const x = radius * Math.sin(phi) * Math.cos(theta);
+    const y = radius * Math.cos(phi);
+    const z = radius * Math.sin(phi) * Math.sin(theta);
+
+    camera.position.set(x, y, z);
+  };
+
+  const onDoubleClick = () => {
+    // Reset camera to default
+    radius = 10;
+    phi = Math.PI / 4;
+    theta = Math.PI / 4;
+
+    const x = radius * Math.sin(phi) * Math.cos(theta);
+    const y = radius * Math.cos(phi);
+    const z = radius * Math.sin(phi) * Math.sin(theta);
+
+    camera.position.set(x, y, z);
+    camera.lookAt(0, 0, 0);
+  };
+
+  element.addEventListener("mousedown", (e) => {
+    onMouseDown(e);
+    (onMouseDown as any).clientX = e.clientX;
+    (onMouseDown as any).clientY = e.clientY;
+  });
+  element.addEventListener("mousemove", onMouseMove);
+  element.addEventListener("mouseup", onMouseUp);
+  element.addEventListener("wheel", onWheel, { passive: false });
+  element.addEventListener("dblclick", onDoubleClick);
+
+  return {
+    dispose: () => {
+      element.removeEventListener("mousedown", onMouseDown);
+      element.removeEventListener("mousemove", onMouseMove);
+      element.removeEventListener("mouseup", onMouseUp);
+      element.removeEventListener("wheel", onWheel);
+      element.removeEventListener("dblclick", onDoubleClick);
+    }
+  };
+}
+
 interface GeometryViewerProps {
   modelId: string;
   onLoad?: () => void;
   onError?: (error: Error) => void;
+  explosionValue?: number;
 }
 
 /**
@@ -40,6 +132,7 @@ export function GeometryViewer({
   modelId,
   onLoad,
   onError,
+  explosionValue = 0,
 }: GeometryViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -47,6 +140,7 @@ export function GeometryViewer({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const meshesRef = useRef<Map<number, THREE.Mesh>>(new Map());
   const animationIdRef = useRef<number | null>(null);
+  const originalPositionsRef = useRef<Map<number, THREE.Vector3>>(new Map());
 
   const { geometry, parts, isLoading, error: geometryError } = use3DGeometry({
     modelId,
@@ -127,13 +221,17 @@ export function GeometryViewer({
        });
        containerRef.current.appendChild(renderer.domElement);
 
-      // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
+       // Lighting
+       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+       scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(5, 5, 5);
-      scene.add(directionalLight);
+       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+       directionalLight.position.set(5, 5, 5);
+       scene.add(directionalLight);
+
+       // Initialize OrbitControls
+       const controls = createOrbitControls(camera, renderer.domElement);
+       console.log("[GeometryViewer] OrbitControls initialized");
 
        // Create buffer geometry from raw data
        console.log("[GeometryViewer] Creating buffer geometry from:", {
@@ -202,26 +300,27 @@ export function GeometryViewer({
 
       if (onLoad) onLoad();
 
-       return () => {
-         window.removeEventListener("resize", handleResize);
-         if (animationIdRef.current) {
-           cancelAnimationFrame(animationIdRef.current);
-         }
-         if (containerRef.current && rendererRef.current) {
-           try {
-             containerRef.current.removeChild(rendererRef.current.domElement);
-           } catch (e) {
-             // Already removed
-           }
-         }
-         bufferGeometry.dispose();
-         // Dispose shared material (only once, since all meshes use the same one)
-         const firstMesh = meshes.values().next().value;
-         if (firstMesh?.material && !Array.isArray(firstMesh.material)) {
-           (firstMesh.material as THREE.Material).dispose();
-         }
-         renderer.dispose();
-       };
+        return () => {
+          window.removeEventListener("resize", handleResize);
+          if (animationIdRef.current) {
+            cancelAnimationFrame(animationIdRef.current);
+          }
+          controls.dispose();
+          if (containerRef.current && rendererRef.current) {
+            try {
+              containerRef.current.removeChild(rendererRef.current.domElement);
+            } catch (e) {
+              // Already removed
+            }
+          }
+          bufferGeometry.dispose();
+          // Dispose shared material (only once, since all meshes use the same one)
+          const firstMesh = meshes.values().next().value;
+          if (firstMesh?.material && !Array.isArray(firstMesh.material)) {
+            (firstMesh.material as THREE.Material).dispose();
+          }
+          renderer.dispose();
+        };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to render geometry";
       setError(message);
@@ -230,6 +329,39 @@ export function GeometryViewer({
       }
     }
   }, [geometry, parts, isLoading, onLoad, onError]);
+
+  // Handle explosion value changes
+  useEffect(() => {
+    if (!sceneRef.current || !meshesRef.current || meshesRef.current.size === 0) {
+      return;
+    }
+
+    // If no original positions saved, save them now
+    if (originalPositionsRef.current.size === 0) {
+      meshesRef.current.forEach((mesh, index) => {
+        originalPositionsRef.current.set(index, mesh.position.clone());
+      });
+    }
+
+    // Apply explosion effect
+    meshesRef.current.forEach((mesh, index) => {
+      const originalPos = originalPositionsRef.current.get(index);
+      if (!originalPos) return;
+
+      // Calculate explosion direction (away from origin)
+      const bbox = new THREE.Box3().setFromObject(mesh);
+      const center = bbox.getCenter(new THREE.Vector3());
+      const explosionDir = center.normalize();
+
+      // Calculate new position based on explosion value (0-100)
+      const explosionAmount = (explosionValue / 100) * 3; // Max 3 units
+      const newPos = originalPos
+        .clone()
+        .add(explosionDir.multiplyScalar(explosionAmount));
+
+      mesh.position.copy(newPos);
+    });
+  }, [explosionValue]);
 
   if (error) {
     return (

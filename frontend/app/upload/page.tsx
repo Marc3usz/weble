@@ -92,7 +92,7 @@ export default function UploadPage() {
         </div>
 
         {/* Upload Card */}
-        <Card className="border-2 border-dashed border-lilac_ash-300 rounded-3xl p-12 bg-bright_snow-500">
+        <Card className="rounded-3xl p-12 bg-lilac_ash-50 border border-lilac_ash-200">
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
@@ -110,7 +110,7 @@ export default function UploadPage() {
               <p className="text-lg font-semibold text-black-DEFAULT">
                 Przeciągnij plik tutaj lub kliknij aby wybrać
               </p>
-              <p className="text-sm text-charcoal-500">
+              <p className="text-sm text-charcoal-600">
                 Akceptowane pliki: .step
               </p>
             </div>
@@ -128,7 +128,7 @@ export default function UploadPage() {
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="outline"
-              className="px-6 py-2 rounded-3xl border-lilac_ash-300 text-lilac_ash-500 hover:bg-lilac_ash-50"
+              className="px-6 py-2 rounded-3xl border-lilac_ash-400 text-lilac_ash-600 hover:bg-lilac_ash-50 hover:border-lilac_ash-500 transition-colors"
             >
               Wybierz plik
             </Button>
@@ -137,14 +137,14 @@ export default function UploadPage() {
 
         {/* Selected File Display */}
         {selectedFile && !success && (
-          <Card className="rounded-3xl p-6 bg-bright_snow-600 border-lilac_ash-200">
+          <Card className="rounded-3xl p-6 bg-lilac_ash-100 border-lilac_ash-300">
             <div className="flex items-center gap-4">
-              <CheckCircle className="w-6 h-6 text-lilac_ash-500 flex-shrink-0" />
+              <CheckCircle className="w-6 h-6 text-lilac_ash-600 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-black-DEFAULT truncate">
                   {selectedFile.name}
                 </p>
-                <p className="text-sm text-charcoal-500">
+                <p className="text-sm text-charcoal-600">
                   {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
@@ -164,8 +164,8 @@ export default function UploadPage() {
 
         {/* Success Alert */}
         {success && (
-          <Alert className="border-lilac_ash-200 bg-lilac_ash-50 rounded-3xl">
-            <CheckCircle className="h-4 w-4 text-lilac_ash-500" />
+          <Alert className="border-lilac_ash-300 bg-lilac_ash-50 rounded-3xl">
+            <CheckCircle className="h-4 w-4 text-lilac_ash-600" />
             <AlertDescription className="text-lilac_ash-700">
               Plik przesłany pomyślnie! Przekierowuję...
             </AlertDescription>
@@ -173,11 +173,11 @@ export default function UploadPage() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-4 justify-center">
+        <div className="flex gap-4 justify-center pt-4">
           <Link href="/">
             <Button
               variant="outline"
-              className="px-8 py-6 rounded-3xl border-lilac_ash-300 text-charcoal-500"
+              className="px-8 py-6 rounded-3xl border-lilac_ash-300 text-charcoal-600 hover:text-lilac_ash-600 hover:border-lilac_ash-400 transition-colors"
             >
               ← Powrót
             </Button>
@@ -186,7 +186,7 @@ export default function UploadPage() {
           <Button
             onClick={handleUpload}
             disabled={!selectedFile || loading}
-            className="px-8 py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl disabled:opacity-50 transition-colors"
+            className="px-8 py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl disabled:opacity-50 disabled:bg-lilac_ash-300 transition-colors"
           >
             {loading ? (
               <span className="flex items-center gap-2">

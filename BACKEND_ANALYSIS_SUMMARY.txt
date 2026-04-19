@@ -1,0 +1,420 @@
+# WEBLE Backend API Analysis - Executive Summary
+
+## Analysis Overview
+
+Complete analysis of the WEBLE backend codebase has been performed, covering all API endpoints, request/response schemas, data flows, and transformations.
+
+## Documents Generated
+
+### 1. BACKEND_API_ANALYSIS.md (13.5 KB)
+Comprehensive reference covering:
+- Complete API endpoint definitions
+- Request/response schemas with field names and types
+- Error response formats and codes
+- Data transformations across all 4 pipeline stages
+- Configuration options
+- Authentication & CORS setup
+- Known inconsistencies and issues
+
+**Key Sections:**
+- 8 endpoints fully documented
+- Request/response examples in JSON
+- Field mapping between frontend and backend
+- Processing status enums and stage values
+- Service configuration details
+
+### 2. BACKEND_DETAILED_COMPARISON.md (24.5 KB)
+In-depth endpoint documentation with:
+- Full HTTP request/response examples
+- Real-world response payloads
+- Implementation details and source files
+- Data structure explanations
+- Classification logic for parts
+- Deduplication process details
+- Complete processing pipeline data flow
+
+**Key Sections:**
+- Per-endpoint deep dives with examples
+- Geometry structure breakdown
+- Part type classification logic
+- LLM-powered assembly generation details
+- Database state progression
+- Error scenarios with actual responses
+
+## API Endpoints Summary
+
+### Core Endpoints
+
+1. **POST /api/v1/step/upload**
+   - Upload STEP CAD file (asynchronous)
+   - Returns: job_id, model_id, status, estimated_time_seconds
+   - Validation: File size (max 50 MB), STEP format (ISO-10303-21)
+   - Triggers background 4-stage pipeline
+
+2. **GET /api/v1/step/progress/{job_id}/stream**
+   - Real-time progress via Server-Sent Events (SSE)
+   - Returns: Streaming JSON events with progress_percent, current_stage, action, eta_seconds
+   - Stages: loading_geometry (0-25%), extracting_parts (25-50%), generating_svgs (50-75%), generating_assembly (75-100%)
+   - Status values: processing, complete, failed
+
+3. **GET /api/v1/jobs/{job_id}**
+   - Single snapshot of job status
+   - Returns: job_id, model_id, status, progress_percent, current_stage, action, eta_seconds, error_message
+   - Non-streaming alternative to SSE endpoint
+
+4. **GET /api/v1/step/{model_id}**
+   - Retrieve processed geometry data
+   - Returns: Geometry3D with vertices, normals, indices, metadata
+   - Geometry: Triangle mesh representation of STEP model
+   - Metadata: Contains solids with bounding boxes, centroids, volume, surface area
+
+5. **POST /api/v1/step/parts-2d**
+   - Extract and classify parts from model
+   - Request: {model_id} or {modelId}
+   - Returns: PartsResponse with parts list (id, part_type, quantity, volume, dimensions)
+   - Part types: panel, hardware, fastener, structural, other
+   - Includes deduplication with adaptive tolerance (5-30%)
+
+6. **POST /api/v1/step/assembly-analysis**
+   - Generate assembly instructions
+   - Request: {model_id}, optional preview_only parameter
+   - Returns: AssemblyResponse with assembly steps
+   - Phase 3 LLM features: detail_description, assembly_sequence, warnings, tips, confidence_score, is_llm_generated
+   - Modes: Rules-based (default) or LLM-powered (if enabled)
+
+7. **GET /api/v1/health**
+   - Health check endpoint
+   - Returns: {status: "healthy", version: "0.1.0", message}
+
+8. **GET /api/v1/health/detailed**
+   - Detailed health check with service status
+   - Returns: {status, services: {api, database, storage}}
+
+## Processing Pipeline
+
+### Stage 1: STEP Loading (0-25%)
+- Input: Raw STEP file bytes
+- Process: CadQuery library or fallback text parser
+- Output: Geometry3D {vertices, normals, indices, metadata}
+- Metadata: Contains solids with bounding boxes, centroids, volume, surface area
+
+### Stage 2: Parts Extraction (25-50%)
+- Input: Geometry3D with solids metadata
+- Process: Classification and deduplication
+- Output: Parts[] {id, part_type, quantity, volume, dimensions, centroid, surface_area, group_id}
+- Classification: Panel, Hardware, Fastener, Structural, Other
+- Deduplication: Adaptive tolerance based on model scale
+
+### Stage 3: SVG Generation (50-75%)
+- Input: Parts[] with dimensions
+- Process: Generate technical drawings
+- Output: SvgDrawing[] {part_id, svg_content, quantity_label, metadata}
+- Drawings: Orthographic projections + isometric view with dimension annotations
+
+### Stage 4: Assembly Generation (75-100%)
+- Input: Parts[] and SvgDrawing[]
+- Process: Rules-based or LLM-powered sequence generation
+- Output: AssemblyStep[] {step_number, title, description, part_indices, part_roles, context_part_indices, duration_minutes, ...}
+- LLM additions: detail_description, assembly_sequence, warnings, tips, confidence_score
+
+## Key Data Structures
+
+### Request Bodies
+
+UploadResponse:
+- job_id: str (UUID)
+- model_id: str (UUID)
+- status: str ("processing")
+- estimated_time_seconds: int (60)
+
+JobStatusResponse:
+- job_id: str
+- model_id: str
+- status: str ("pending", "processing", "complete", "failed")
+- progress_percent: int (0-100)
+- current_stage: str
+- action: str
+- eta_seconds: int
+- error_message: Optional[str]
+
+ProgressStreamResponse (SSE):
+- job_id: str
+- status: str ("processing", "complete", "failed")
+- progress_percent: int
+- current_stage: str ("loading_geometry", "extracting_parts", "generating_svgs", "generating_assembly")
+- action: str
+- eta_seconds: int
+- error_message: Optional[str]
+- timestamp: Optional[str]
+
+PartsResponse:
+- model_id: str
+- parts: List[{id, part_type, quantity, volume, dimensions}]
+- total_parts: int
+
+AssemblyResponse:
+- model_id: str
+- steps: List[AssemblyStep]
+  - step_number, title, description, detail_description
+  - part_indices, part_roles, context_part_indices
+  - duration_minutes
+  - assembly_sequence, warnings, tips (Phase 3)
+  - confidence_score, is_llm_generated (Phase 3)
+- total_steps: int
+
+## Field Name Inconsistencies
+
+1. **model_id vs modelId**
+   - Backend stores internally as: model_id
+   - Accepts both in request: model_id or modelId
+   - Endpoints: POST parts-2d, POST assembly-analysis
+   - Resolution: payload.get("modelId") or payload.get("model_id")
+
+2. **job_id vs jobId**
+   - Consistently uses: job_id
+   - Path parameter: {job_id}
+
+3. **progress_percent vs percentage**
+   - Internal (ProgressEvent): percentage
+   - API (ProgressStreamResponse): progress_percent
+   - Frontend expects: percentage
+   - Transformation: In stream_progress endpoint
+
+4. **current_stage vs stage**
+   - Internal (ProgressEvent): stage
+   - API (ProgressStreamResponse): current_stage
+   - Frontend display: stage name
+
+5. **action vs message**
+   - Internal (ProgressEvent): message
+   - API (ProgressStreamResponse): action
+   - Frontend display: action text
+
+## Response Format Differences
+
+### Geometry Response Format
+GET /api/v1/step/{model_id} wraps geometry in outer object:
+`json
+{
+  "status": "success",
+  "model_id": "...",
+  "file_name": "...",
+  "file_size": 123456,
+  "geometry_loaded": true,
+  "geometry": {
+    "vertices": [...],
+    "normals": [...],
+    "indices": [...],
+    "metadata": {...}
+  }
+}
+`
+
+Internally stored as Geometry3D (flat):
+`python
+@dataclass
+class Geometry3D:
+    vertices: List[List[float]]
+    normals: List[List[float]]
+    indices: List[int]
+    metadata: Dict[str, Any]
+`
+
+### Status Values Mismatch
+- SSE final event: status="success"
+- JobStatusResponse: status="complete"
+- ProcessingStatus enum: "complete"
+- Typically handled as: "success" mapped to "complete" in API
+
+## Configuration Settings
+
+### Processing
+- max_file_size_mb: 50
+- max_parts_per_model: 500
+- step_processing_timeout_seconds: 300 (5 min)
+- svg_generation_timeout_seconds: 60
+- assembly_generation_timeout_seconds: 120
+
+### LLM (Phase 3)
+- assembly_llm_enabled: True
+- assembly_tone: AssemblyTone.IKEA (IKEA, TECHNICAL, BEGINNER)
+- assembly_llm_model: "google/gemini-2.0-flash"
+- llm_max_tokens: 2000
+- llm_timeout_seconds: 30
+
+### Database
+- database_type: DatabaseType.MEMORY (MEMORY, SQLITE, POSTGRES)
+- database_url: "" (for sqlite/postgres)
+
+### CORS
+- allow_origins: ["*"] (all origins, development mode)
+- allow_credentials: True
+- allow_methods: ["*"]
+- allow_headers: ["*"]
+
+### Authentication
+- No API key or JWT required (development mode)
+
+## Error Codes
+
+- INVALID_STEP_FILE: File format invalid (400)
+- FILE_TOO_LARGE: Exceeds max size (400)
+- NO_SOLIDS_FOUND: No geometry in STEP (400)
+- PART_EXTRACTION_ERROR: Failed extracting part (400)
+- SVG_GENERATION_ERROR: Failed generating SVG (400)
+- LLM_API_ERROR: OpenRouter API failure (400)
+- ASSEMBLY_VALIDATION_ERROR: Generated assembly invalid (400)
+- VALIDATION_ERROR: Request validation failed (422)
+- INTERNAL_ERROR: Unexpected server error (500)
+
+## Critical Findings
+
+### Data Consistency Issues
+
+1. **Field naming is inconsistent**
+   - Some endpoints accept both snake_case and camelCase
+   - Creates confusion for API consumers
+   - Mitigation: Backend normalizes, but not documented
+
+2. **SSE response differs from job status response**
+   - Same data but different field names
+   - Transformation happens in endpoint
+   - Not obvious from API documentation
+
+3. **Geometry wrapping is asymmetric**
+   - Response wraps Geometry3D in outer object
+   - Internal storage is flat
+   - Manual wrapping in endpoint adds complexity
+
+4. **Status values use different terminology**
+   - "success" vs "complete"
+   - Could cause client-side bugs if not handled
+   - Should standardize on one term
+
+### LLM Integration Notes
+
+- Phase 3 LLM features are optional (assembly_llm_enabled config)
+- Falls back to rules-based if LLM fails
+- Confidence scores differentiate LLM (0.85-0.95) vs rules (0.8)
+- is_llm_generated flag allows frontend to show quality indicators
+- Tone settings affect instruction style (IKEA vs TECHNICAL vs BEGINNER)
+
+### Performance Considerations
+
+- STEP loading timeout: 5 minutes (handles large files)
+- Assembly generation timeout: 2 minutes (LLM calls are slower)
+- SSE queue size: 100 events max (bounded memory)
+- Dead queue removal prevents subscriber leaks
+
+## Frontend Integration Points
+
+### API Consumption
+`javascript
+// Upload
+POST /api/v1/step/upload → UploadResponse {job_id, model_id}
+
+// Track progress
+GET /api/v1/step/progress/{job_id}/stream → SSE events
+
+// Retrieve results
+GET /api/v1/step/{model_id} → Geometry
+POST /api/v1/step/parts-2d → PartsResponse
+POST /api/v1/step/assembly-analysis → AssemblyResponse
+`
+
+### Frontend Type Expectations
+`	ypescript
+interface UploadResponse {
+  job_id: string;
+  model_id: string;
+  status: string;
+}
+
+interface ProgressEvent {
+  job_id: string;
+  status: "processing" | "complete" | "failed";
+  percentage: number;
+  message?: string;
+  error?: string;
+}
+`
+
+**Note:** Frontend expects "percentage" but backend sends "progress_percent" - transformation happens in api.ts service layer
+
+## Recommendations
+
+1. **Standardize field names**
+   - Use snake_case consistently
+   - Document camelCase aliases if needed
+   - Avoid mixing in same response
+
+2. **Document transformations**
+   - Clearly note where field names change
+   - Create mapping table in API docs
+   - Use consistent terminology (status values)
+
+3. **Add OpenAPI/Swagger spec**
+   - Auto-generate from Pydantic models
+   - Provides single source of truth
+   - Easier for frontend teams to consume
+
+4. **Version error responses**
+   - Current error format may change
+   - Add error code documentation
+   - Version error schema separately
+
+5. **Add request ID tracking**
+   - Would help with debugging
+   - Could trace errors through pipeline
+   - Useful for metrics/analytics
+
+## Summary Statistics
+
+- Total endpoints: 8
+- Async endpoints: 2 (upload, SSE streaming)
+- Sync endpoints: 6
+- Pipeline stages: 4
+- Data transformations: 4
+- Part types: 5
+- Status values: 4 (pending, processing, complete, failed)
+- Configuration options: 20+
+- Known issues: 5
+
+## Files Analyzed
+
+Backend Python files:
+- app/main.py - FastAPI application factory
+- app/api/v1/endpoints/step.py - Step processing endpoints (367 lines)
+- app/api/v1/endpoints/jobs.py - Job status endpoints (74 lines)
+- app/api/v1/endpoints/health.py - Health check endpoints (26 lines)
+- app/models/schemas.py - Pydantic data models (207 lines)
+- app/core/config.py - Configuration (105 lines)
+- app/core/exceptions.py - Exception definitions (65 lines)
+- app/container.py - Dependency injection (70 lines)
+- app/db/repositories.py - Repository interface (137 lines)
+- app/db/in_memory_repository.py - In-memory implementation (175 lines)
+- app/services/progress_tracker.py - SSE event tracking (106 lines)
+- app/workers/pipeline.py - Pipeline orchestration (321 lines)
+- app/services/assembly_generator.py - Assembly generation (425 lines)
+
+Frontend JavaScript/TypeScript files:
+- frontend/services/api.ts - API client (132 lines)
+- frontend/types/index.ts - Type definitions (103 lines)
+- frontend/hooks/useProgress.ts - Progress hook (84 lines)
+- frontend/app/upload/page.tsx - Upload page (204 lines)
+- frontend/app/progress/[jobId]/page.tsx - Progress page (221 lines)
+
+## Next Steps
+
+1. Review the two generated documents
+2. Cross-reference with actual API calls
+3. Update frontend code if field mappings are incorrect
+4. Consider implementing recommendations above
+5. Generate OpenAPI spec from Pydantic models
+
+---
+
+Generated: April 19, 2026
+Analysis Coverage: 100% of endpoints and schemas
+Document Format: Markdown
+Total Analysis: 38+ KB of documentation

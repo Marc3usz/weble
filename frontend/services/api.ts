@@ -5,9 +5,55 @@ import {
   AssemblyResponse,
   Geometry,
   ProgressEvent,
+  Part,
 } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// Generate readable name for a part based on type and dimensions
+function generatePartName(part: any): string {
+  const { id, part_type, dimensions } = part;
+
+  // If no type, just use the id
+  if (!part_type) return id;
+
+  // Part type mappings with readable names
+  const typeMap: Record<string, string> = {
+    panel: "Panel",
+    fastener: "Screw",
+    hardware: "Hardware",
+    structural: "Bracket",
+    other: "Part",
+  };
+
+  const typeName = typeMap[part_type] || part_type;
+
+  // Try to extract dimension info for better naming
+  if (dimensions && typeof dimensions === "object") {
+    const dims = dimensions as Record<string, number>;
+    const width = dims.width || dims.w;
+    const height = dims.height || dims.h;
+    const depth = dims.depth || dims.d;
+
+    // Generate names based on type and dimensions
+    if (part_type === "fastener") {
+      // Fasteners: try to extract size (e.g., "M4 Screw")
+      if (width) return `M${Math.round(width)} ${typeName}`;
+      return typeName;
+    } else if (part_type === "panel") {
+      // Panels: use dimensions for description
+      if (width && height)
+        return `${Math.round(width)}×${Math.round(height)} ${typeName}`;
+      return typeName;
+    } else if (part_type === "structural") {
+      // Structural: add size info
+      if (width) return `${Math.round(width)}mm ${typeName}`;
+      return typeName;
+    }
+  }
+
+  return typeName;
+}
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -22,7 +68,7 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
   formData.append("file", file);
 
   const response = await apiClient.post<UploadResponse>(
-    "/api/v1/jobs/upload",
+    "/api/v1/step/upload",
     formData,
     {
       headers: {
@@ -42,7 +88,7 @@ export function subscribeToProgress(
   onComplete: () => void
 ): () => void {
   const eventSource = new EventSource(
-    `${API_BASE_URL}/api/v1/jobs/${jobId}/progress`
+    `${API_BASE_URL}/api/v1/step/progress/${jobId}/stream`
   );
 
   const handleMessage = (event: MessageEvent) => {
@@ -50,7 +96,7 @@ export function subscribeToProgress(
       const data = JSON.parse(event.data) as ProgressEvent;
       onUpdate(data);
 
-      if (data.status === "completed" || data.status === "failed") {
+      if (data.status === "complete" || data.status === "failed") {
         onComplete();
       }
     } catch (error) {
@@ -74,12 +120,21 @@ export function subscribeToProgress(
 
 // Get parts for a model
 export async function getParts(modelId: string): Promise<PartsResponse> {
-  const response = await apiClient.post<PartsResponse>(
+  const response = await apiClient.post<any>(
     "/api/v1/step/parts-2d",
     { model_id: modelId }
   );
 
-  return response.data;
+  // Transform parts to add generated names
+  const transformedResponse: PartsResponse = {
+    model_id: response.data.model_id,
+    parts: response.data.parts.map((part: any) => ({
+      ...part,
+      name: generatePartName(part),
+    })) as Part[],
+  };
+
+  return transformedResponse;
 }
 
 // Get assembly steps for a model
@@ -94,11 +149,12 @@ export async function getAssembly(modelId: string): Promise<AssemblyResponse> {
 
 // Get geometry (3D model)
 export async function getGeometry(modelId: string): Promise<Geometry> {
-  const response = await apiClient.get<Geometry>(
-    `/api/v1/models/${modelId}/geometry`
+  const response = await apiClient.get<any>(
+    `/api/v1/step/${modelId}`
   );
 
-  return response.data;
+  // Backend wraps geometry in response object - extract the geometry field
+  return response.data.geometry || response.data;
 }
 
 // Export assembly as PDF

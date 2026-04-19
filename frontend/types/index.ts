@@ -7,17 +7,19 @@ export interface UploadResponse {
 
 export interface ProgressEvent {
   job_id: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  percentage: number;
-  message?: string;
-  error?: string;
+  status: "pending" | "processing" | "complete" | "failed";
+  progress_percent: number;
+  current_stage?: string;
+  action?: string;
+  error_message?: string;
+  eta_seconds?: number;
+  timestamp?: string | null;
 }
 
 // Parts Types
 export interface Part {
   id: string;
-  name: string;
-  type: string;
+  part_type: string;
   quantity: number;
   volume?: number;
   dimensions?: {
@@ -25,7 +27,7 @@ export interface Part {
     height: number;
     depth: number;
   };
-  svg_url?: string;
+  name?: string; // Generated at runtime based on part_type and dimensions
 }
 
 export interface PartsResponse {
@@ -38,14 +40,18 @@ export interface AssemblyStep {
   step_number: number;
   title: string;
   description: string;
-  parts: Array<{
-    id: string;
-    name: string;
-    quantity: number;
-  }>;
+  part_indices: number[];
+  part_roles?: Record<string, string>;
   context_part_indices?: number[];
-  svg_url?: string;
-  image_url?: string;
+  svg_diagram?: string;
+  exploded_view_svg?: string;
+  duration_minutes?: number;
+  detail_description?: string;
+  assembly_sequence?: string[];
+  warnings?: string[];
+  tips?: string[];
+  confidence_score?: number;
+  is_llm_generated?: boolean;
 }
 
 export interface AssemblyResponse {
@@ -55,11 +61,25 @@ export interface AssemblyResponse {
 }
 
 // Geometry Types
+export interface BoundingBox {
+  min: [number, number, number];
+  max: [number, number, number];
+}
+
+export interface Solid {
+  id?: string;
+  bounding_box: BoundingBox;
+}
+
+export interface GeometryMetadata {
+  solids: Solid[];
+}
+
 export interface Geometry {
-  model_id: string;
-  glb_url: string;
-  scale?: number;
-  center?: [number, number, number];
+  vertices: number[][];
+  normals: number[][];
+  indices: number[];
+  metadata: GeometryMetadata;
 }
 
 // PDF Export
@@ -74,7 +94,7 @@ export interface AppState {
   currentJobId: string | null;
   currentModelId: string | null;
   progressPercentage: number;
-  jobStatus: "idle" | "pending" | "processing" | "completed" | "failed";
+  jobStatus: "idle" | "pending" | "processing" | "complete" | "failed";
   parts: Part[] | null;
   assembly: AssemblyStep[] | null;
   geometry: Geometry | null;

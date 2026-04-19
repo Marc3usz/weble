@@ -24,14 +24,14 @@ export function useProgress({
   const storeSetError = useAppStore((state) => state.setError);
 
   const handleUpdate = useCallback((event: ProgressEvent) => {
-    setPercentage(event.percentage);
+    setPercentage(event.progress_percent);
     setStatus(event.status);
-    storeSetProgress(event.percentage);
+    storeSetProgress(event.progress_percent);
     storeSetJobStatus(event.status);
 
-    if (event.error) {
-      setError(event.error);
-      storeSetError(event.error);
+    if (event.error_message) {
+      setError(event.error_message);
+      storeSetError(event.error_message);
     }
   }, [storeSetProgress, storeSetJobStatus, storeSetError]);
 
@@ -53,11 +53,11 @@ export function useProgress({
   useEffect(() => {
     setIsConnected(true);
 
-    // Try to get initial status
+    // Try to get initial status (endpoint may not exist)
     getJobStatus(jobId)
       .then(handleUpdate)
-      .catch((err) => {
-        console.error("Failed to get initial status:", err);
+      .catch(() => {
+        // Silently ignore - endpoint may not exist, will get data from SSE stream
       });
 
     // Subscribe to progress
@@ -78,7 +78,7 @@ export function useProgress({
     status,
     error,
     isConnected,
-    isComplete: status === "completed",
+    isComplete: status === "complete",
     isFailed: status === "failed",
   };
 }

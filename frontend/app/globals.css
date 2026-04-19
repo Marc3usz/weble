@@ -7,31 +7,95 @@
   --muted: #575a5e;
   --border: #434045;
   --accent: #a7a2a9;
+  
+  /* Override shadcn defaults for soft, squircle aesthetic */
+  --radius: 24px;
 }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+  background-color: #fdfdfd;
 }
 
-/* Squircle corner support for buttons, cards, etc */
+/* Apply squircles to all interactive elements */
 button,
 [role="button"],
 .card,
 .btn,
 input,
 textarea,
-select {
+select,
+[class*="rounded-"] {
   corner-shape: squircle;
+}
+
+/* Override shadcn button defaults */
+button[class*="bg-"] {
+  border-radius: 24px !important;
+  box-shadow: 0 2px 8px rgba(8, 9, 10, 0.08);
+  transition: all 200ms ease-out;
+}
+
+button[class*="bg-"]:hover {
+  box-shadow: 0 4px 12px rgba(8, 9, 10, 0.12);
+  transform: translateY(-1px);
+}
+
+/* Override shadcn card/alert defaults */
+[class*="rounded-3xl"],
+.card,
+[role="alert"] {
+  border-radius: 24px !important;
+  box-shadow: 0 2px 8px rgba(8, 9, 10, 0.06);
+  border: 1px solid rgba(167, 162, 169, 0.1);
+}
+
+/* No harsh borders - use soft fills instead */
+[class*="border-"] {
+  border-color: rgba(167, 162, 169, 0.1) !important;
+}
+
+/* Input styling */
+input,
+textarea,
+select {
+  border-radius: 16px !important;
+  border: 1px solid rgba(167, 162, 169, 0.15) !important;
+  background-color: rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 3px rgba(8, 9, 10, 0.04);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #a7a2a9 !important;
+  box-shadow: inset 0 1px 3px rgba(8, 9, 10, 0.04), 0 0 0 3px rgba(167, 162, 169, 0.1);
+}
+
+/* Badge styling */
+[class*="badge"],
+span[class*="rounded-full"] {
+  border-radius: 20px !important;
+  background: rgba(167, 162, 169, 0.08);
+  border: none !important;
+}
+
+/* Progress bar styling */
+[role="progressbar"],
+[class*="progress"] {
+  border-radius: 16px !important;
+  background-color: rgba(167, 162, 169, 0.08);
+  box-shadow: inset 0 1px 3px rgba(8, 9, 10, 0.04);
 }
 
 /* Smooth transitions */
 * {
-  transition: opacity 300ms;
+  transition: opacity 200ms, box-shadow 200ms, transform 200ms;
 }
 
 /* Remove default focus outline */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(167, 162, 169, 0.5);
+  box-shadow: 0 0 0 3px rgba(167, 162, 169, 0.2);
 }
