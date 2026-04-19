@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { cn } from "@/lib/utils";
 
 interface ExplosionControlProps {
   value: number;
@@ -17,12 +16,12 @@ interface ExplosionControlProps {
  */
 export function ExplosionControl({ value, onChange }: ExplosionControlProps) {
   return (
-    <div className="w-full space-y-3 px-4 py-4 bg-lilac_ash-200 rounded-3xl border border-lilac_ash-400">
+    <div className="w-full space-y-2 px-3 py-3 bg-lilac_ash-300/95 backdrop-blur-sm rounded-2xl shadow-md">
       <div className="flex items-center justify-between">
-        <label htmlFor="explosion-slider" className="text-sm font-semibold text-charcoal-700">
+        <label htmlFor="explosion-slider" className="text-xs font-semibold text-charcoal-700">
           Rozłożenie części
         </label>
-        <span className="text-xs text-charcoal-700 bg-lilac_ash-100 px-3 py-1 rounded-2xl">
+        <span className="text-xs text-charcoal-700 bg-lilac_ash-100 px-2 py-0.5 rounded-xl">
           {value}%
         </span>
       </div>
@@ -35,34 +34,11 @@ export function ExplosionControl({ value, onChange }: ExplosionControlProps) {
         max="100"
         value={value}
         onChange={(e) => onChange(Number(e.currentTarget.value))}
-        className={cn(
-          "w-full h-2 bg-lilac_ash-400 rounded-full appearance-none cursor-pointer",
-          "accent-lilac_ash-600",
-          "[&::-webkit-slider-thumb]:appearance-none",
-          "[&::-webkit-slider-thumb]:w-5",
-          "[&::-webkit-slider-thumb]:h-5",
-          "[&::-webkit-slider-thumb]:rounded-full",
-          "[&::-webkit-slider-thumb]:bg-lilac_ash-600",
-          "[&::-webkit-slider-thumb]:cursor-pointer",
-          "[&::-webkit-slider-thumb]:shadow-md",
-          "[&::-webkit-slider-thumb]:transition-all",
-          "[&::-webkit-slider-thumb]:hover:bg-lilac_ash-700",
-          "[&::-webkit-slider-thumb]:hover:shadow-lg",
-          "[&::-moz-range-thumb]:w-5",
-          "[&::-moz-range-thumb]:h-5",
-          "[&::-moz-range-thumb]:rounded-full",
-          "[&::-moz-range-thumb]:bg-lilac_ash-600",
-          "[&::-moz-range-thumb]:cursor-pointer",
-          "[&::-moz-range-thumb]:border-0",
-          "[&::-moz-range-thumb]:shadow-md",
-          "[&::-moz-range-thumb]:transition-all",
-          "[&::-moz-range-thumb]:hover:bg-lilac_ash-700",
-          "[&::-moz-range-thumb]:hover:shadow-lg",
-        )}
+        className="explosion-slider"
       />
 
       {/* Hint Text */}
-      <p className="text-xs text-charcoal-600">
+      <p className="text-[11px] text-charcoal-600">
         Przeciągnij suwak aby rozsunąć części
       </p>
     </div>

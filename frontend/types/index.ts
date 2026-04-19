@@ -69,6 +69,10 @@ export interface BoundingBox {
 export interface Solid {
   id?: string;
   bounding_box: BoundingBox;
+  vertex_start?: number;
+  vertex_count?: number;
+  index_start?: number;
+  index_count?: number;
 }
 
 export interface GeometryMetadata {

@@ -21,29 +21,29 @@ export function ProgressCard({
   const getStatusIcon = () => {
     switch (status) {
       case "completed":
-        return <CheckCircle className="w-5 h-5 text-lilac_ash-500" />;
+        return <CheckCircle className="w-5 h-5 text-lilac_ash-600" />;
       case "failed":
         return <AlertCircle className="w-5 h-5 text-red-500" />;
       case "processing":
         return (
-          <Clock className="w-5 h-5 text-lilac_ash-500 animate-spin" />
+          <Clock className="w-5 h-5 text-lilac_ash-600 animate-spin" />
         );
       case "pending":
       default:
-        return <Clock className="w-5 h-5 text-charcoal-400" />;
+        return <Clock className="w-5 h-5 text-charcoal-600" />;
     }
   };
 
   const getBackgroundColor = () => {
-    if (status === "completed") return "bg-lilac_ash-50 border-lilac_ash-200";
+    if (status === "completed") return "bg-lilac_ash-200 border-lilac_ash-400";
     if (status === "failed") return "bg-red-50 border-red-200";
-    return "bg-bright_snow-600 border-lilac_ash-200";
+    return "bg-lilac_ash-100 border-lilac_ash-300";
   };
 
   const getTitleColor = () => {
-    if (status === "completed") return "text-lilac_ash-600";
+    if (status === "completed") return "text-lilac_ash-700";
     if (status === "failed") return "text-red-600";
-    return "text-black-DEFAULT";
+    return "text-charcoal-800";
   };
 
   return (
@@ -70,7 +70,7 @@ export function ProgressCard({
           </div>
 
           {details && (
-            <p className="text-sm text-charcoal-500 mt-1 truncate">
+            <p className="text-sm text-charcoal-600 mt-1 truncate">
               {details}
             </p>
           )}

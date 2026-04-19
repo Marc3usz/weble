@@ -6,14 +6,15 @@ import { PartHoverPreview } from "./PartHoverPreview";
 import { ExplosionControl } from "./ExplosionControl";
 import { Part } from "@/types";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PartsViewerProps {
   modelId: string;
   parts: Part[];
   isLoading?: boolean;
+  explosionValue: number;
+  onExplosionChange: (value: number) => void;
+  actions?: React.ReactNode;
 }
 
 /**
@@ -33,27 +34,34 @@ export function PartsViewer({
   modelId,
   parts,
   isLoading = false,
+  explosionValue,
+  onExplosionChange,
+  actions,
 }: PartsViewerProps) {
   const [selectedPartIndex, setSelectedPartIndex] = useState<number | null>(null);
   const [hoveredPartId, setHoveredPartId] = useState<string | null>(null);
-  const [explosionValue, setExplosionValue] = useState(0);
+  const [hoveredAnchorRect, setHoveredAnchorRect] = useState<DOMRect | null>(null);
 
   return (
-    <div className="grid grid-cols-3 gap-6 h-full max-h-[70vh]">
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 h-full max-h-[calc(100vh-11.5rem)] min-h-[520px]">
       {/* Left: 3D Viewer with Controls (60% width) */}
-      <div className="col-span-2 space-y-3">
-        <GeometryViewer 
-          modelId={modelId}
-          explosionValue={explosionValue}
-          selectedPartId={selectedPartIndex ?? undefined}
-        />
-        <ExplosionControl
-          value={explosionValue}
-          onChange={setExplosionValue}
-        />
+      <div className="xl:col-span-2 space-y-2 min-h-0">
+        <div className="relative">
+          <GeometryViewer 
+            modelId={modelId}
+            explosionValue={explosionValue}
+            selectedPartId={selectedPartIndex ?? undefined}
+          />
+
+          <div className="absolute top-3 left-3 w-[300px] max-w-[calc(100%-1.5rem)] z-20">
+            <ExplosionControl value={explosionValue} onChange={onExplosionChange} />
+          </div>
+        </div>
+
+        {actions ? <div className="rounded-3xl bg-lilac_ash-300 p-2">{actions}</div> : null}
         
         {/* Canvas Controls */}
-        <div className="flex gap-2 px-4 py-3 bg-lilac_ash-200 rounded-3xl border border-lilac_ash-400">
+        <div className="flex gap-2 px-3 py-2 bg-lilac_ash-300 rounded-3xl">
           <p className="text-xs text-charcoal-700 flex-1">
             💡 Obróć: przeciągnij | Powiększ: scroll | Reset: 2x klik
           </p>
@@ -61,8 +69,8 @@ export function PartsViewer({
       </div>
 
       {/* Right: Parts List (40% width) */}
-      <div className="col-span-1">
-        <div className="h-full rounded-3xl bg-bright_snow-700 border border-lilac_ash-300 p-4 overflow-y-auto">
+      <div className="xl:col-span-1 min-h-0">
+        <div className="h-full rounded-3xl bg-bright_snow-700 p-3 overflow-y-auto">
           <div className="space-y-3">
             {parts.map((part, index) => (
               <PartListItem
@@ -75,10 +83,15 @@ export function PartsViewer({
                 onHover={(isHovered) => {
                   setHoveredPartId(isHovered ? part.id : null);
                 }}
+                onHoverRectChange={setHoveredAnchorRect}
                 onHoverPreview={
                   <PartHoverPreview
+                    modelId={modelId}
+                    partIndex={index}
                     part={part}
                     visible={hoveredPartId === part.id}
+                    anchorRect={hoveredPartId === part.id ? hoveredAnchorRect : null}
+                    delay={500}
                   />
                 }
               />
@@ -100,6 +113,7 @@ interface PartListItemProps {
   isHovered: boolean;
   onSelect: () => void;
   onHover: (isHovered: boolean) => void;
+  onHoverRectChange: (rect: DOMRect | null) => void;
   onHoverPreview: React.ReactNode;
 }
 
@@ -110,21 +124,28 @@ function PartListItem({
   isHovered,
   onSelect,
   onHover,
+  onHoverRectChange,
   onHoverPreview,
 }: PartListItemProps) {
   return (
     <div className="relative">
       <Card
         onClick={onSelect}
-        onMouseEnter={() => onHover(true)}
-        onMouseLeave={() => onHover(false)}
+        onMouseEnter={(event) => {
+          onHover(true);
+          onHoverRectChange(event.currentTarget.getBoundingClientRect());
+        }}
+        onMouseLeave={() => {
+          onHover(false);
+          onHoverRectChange(null);
+        }}
         className={cn(
-          "p-4 cursor-pointer transition-all rounded-3xl border-2",
+          "p-4 cursor-pointer transition-all rounded-3xl",
           isSelected
-            ? "bg-lilac_ash-300 border-lilac_ash-500 shadow-md"
+            ? "bg-lilac_ash-400 shadow-md"
             : isHovered
-            ? "bg-lilac_ash-200 border-lilac_ash-400 shadow-lg"
-            : "bg-bright_snow-800 border-lilac_ash-300 hover:border-lilac_ash-400"
+            ? "bg-lilac_ash-300 shadow-lg"
+            : "bg-bright_snow-800 hover:bg-bright_snow-700"
         )}
       >
         <div className="flex items-start gap-3">

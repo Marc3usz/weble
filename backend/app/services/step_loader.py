@@ -102,7 +102,7 @@ class StepLoaderService(PipelineStage):
             raise InvalidStepFileError(f"Failed to parse STEP file: {str(e)}")
 
     def _load_with_cadquery(self, file_content: bytes) -> Geometry3D:
-        """Load STEP using CadQuery and derive mesh from solid bounding boxes."""
+        """Load STEP using CadQuery and triangulate each solid."""
         temp_path = ""
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".step") as tmp:
@@ -125,8 +125,17 @@ class StepLoaderService(PipelineStage):
                 v_min = [float(bbox.xmin), float(bbox.ymin), float(bbox.zmin)]
                 v_max = [float(bbox.xmax), float(bbox.ymax), float(bbox.zmax)]
 
-                solid_vertices, solid_indices = self._build_box_mesh(v_min, v_max)
+                solid_vertices, solid_indices = self._tessellate_solid(solid)
+                if not solid_vertices or not solid_indices:
+                    # Fallback to an AABB mesh only if tessellation failed for this solid.
+                    solid_vertices, solid_indices = self._build_box_mesh(v_min, v_max)
+
                 solid_normals = self._compute_vertex_normals(solid_vertices)
+
+                solid_vertex_start = vertex_offset
+                solid_vertex_count = len(solid_vertices)
+                solid_index_start = len(indices)
+                solid_index_count = len(solid_indices)
 
                 vertices.extend(solid_vertices)
                 normals.extend(solid_normals)
@@ -140,6 +149,10 @@ class StepLoaderService(PipelineStage):
                         "volume": float(solid.Volume()),
                         "centroid": [float(center.x), float(center.y), float(center.z)],
                         "bounding_box": {"min": v_min, "max": v_max},
+                        "vertex_start": solid_vertex_start,
+                        "vertex_count": solid_vertex_count,
+                        "index_start": solid_index_start,
+                        "index_count": solid_index_count,
                     }
                 )
 
@@ -160,6 +173,34 @@ class StepLoaderService(PipelineStage):
         finally:
             if temp_path and os.path.exists(temp_path):
                 os.unlink(temp_path)
+
+    def _tessellate_solid(self, solid: Any, tolerance: float = 0.15) -> Tuple[List[List[float]], List[int]]:
+        """
+        Tessellate a CadQuery solid into triangle mesh.
+
+        Returns:
+            (vertices, indices) where vertices are [[x, y, z], ...] and
+            indices are flat triangle indices [i0, i1, i2, ...].
+        """
+        try:
+            # CadQuery Shape.tessellate returns (vertices, triangles)
+            # vertices: list[Vector], triangles: list[tuple[int, int, int]]
+            tess_vertices, tess_triangles = solid.tessellate(tolerance)
+        except TypeError:
+            # Some CadQuery versions expose angular tolerance as second arg
+            tess_vertices, tess_triangles = solid.tessellate(tolerance, 0.2)
+
+        vertices: List[List[float]] = []
+        for v in tess_vertices:
+            vertices.append([float(v.x), float(v.y), float(v.z)])
+
+        indices: List[int] = []
+        for tri in tess_triangles:
+            if len(tri) != 3:
+                continue
+            indices.extend([int(tri[0]), int(tri[1]), int(tri[2])])
+
+        return vertices, indices
 
     def _load_with_step_text_fallback(self, file_content: bytes) -> Geometry3D:
         """Parse STEP ASCII points and generate a usable mesh."""

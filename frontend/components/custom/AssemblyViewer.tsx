@@ -8,7 +8,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface AssemblyViewerProps {
   modelId: string;
@@ -50,17 +49,17 @@ export function AssemblyViewer({
   };
 
   return (
-    <div className="grid grid-cols-3 gap-6 h-full max-h-[70vh]">
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 h-full max-h-[calc(100vh-15rem)] min-h-[560px]">
       {/* Left: 3D Viewer (60% width) */}
-      <div className="col-span-2">
+      <div className="xl:col-span-2 min-h-0">
         <GeometryViewer modelId={modelId} />
       </div>
 
       {/* Right: Step Carousel (40% width) */}
-      <div className="col-span-1">
-        <Card className="h-full rounded-3xl p-6 bg-bright_snow-600 border border-lilac_ash-200 flex flex-col">
+      <div className="xl:col-span-1 min-h-0">
+        <Card className="h-full rounded-3xl p-5 bg-bright_snow-700 flex flex-col overflow-y-auto">
           {/* Step Header */}
-          <div className="mb-6">
+          <div className="mb-4">
             <h3 className="text-sm font-medium text-charcoal-600 uppercase tracking-wide">
               Krok {currentStep.step_number}
             </h3>
@@ -81,16 +80,16 @@ export function AssemblyViewer({
                  <p className="text-xs font-medium text-charcoal-600 uppercase">
                    Role części
                  </p>
-                 <div className="flex flex-wrap gap-2">
-                   {Object.entries(currentStep.part_roles).map(([index, role]) => (
-                     <Badge
-                       key={index}
-                       variant="secondary"
-                       className="rounded-full bg-lilac_ash-100 text-lilac_ash-600 text-xs"
-                     >
-                       {role}
-                     </Badge>
-                   ))}
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(currentStep.part_roles).map(([index, role]) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="rounded-full bg-lilac_ash-300 text-charcoal-700 text-xs"
+                >
+                  {role}
+                </Badge>
+              ))}
                  </div>
                </div>
              )}
@@ -110,7 +109,7 @@ export function AssemblyViewer({
           {/* Step Counter & Navigation */}
           <div className="space-y-4">
             {/* Progress Bar */}
-            <div className="w-full bg-lilac_ash-100 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-lilac_ash-300 rounded-full h-2 overflow-hidden">
               <div
                 className="h-full bg-lilac_ash-500 transition-all duration-300"
                 style={{
@@ -131,8 +130,7 @@ export function AssemblyViewer({
               <Button
                 onClick={handlePreviousStep}
                 disabled={currentStepIndex === 0}
-                variant="outline"
-                className="flex-1 rounded-3xl border-lilac_ash-300 text-charcoal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-3xl bg-lilac_ash-200 hover:bg-lilac_ash-300 text-charcoal-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>

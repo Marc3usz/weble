@@ -12,6 +12,7 @@ interface BreadcrumbItem {
 interface BreadcrumbProps {
   items: BreadcrumbItem[];
   currentPage: string;
+  actions?: React.ReactNode;
 }
 
 /**
@@ -21,44 +22,43 @@ interface BreadcrumbProps {
  * Each step is clickable and preserves model state via app store
  * Current page is shown but not clickable
  */
-export function Breadcrumb({ items, currentPage }: BreadcrumbProps) {
+export function Breadcrumb({ items, currentPage, actions }: BreadcrumbProps) {
   return (
-    <nav className="flex items-center gap-2 px-4 py-3 bg-bright_snow-900 rounded-3xl border border-lilac_ash-100">
-      {items.map((item, index) => (
-        <React.Fragment key={index}>
-          {/* Breadcrumb Item */}
-          {item.href ? (
-            <Link
-              href={item.href}
-              className={cn(
-                "text-charcoal-500 hover:text-lilac_ash-500",
-                "transition-colors duration-200",
-                "hover:border-b-2 hover:border-lilac_ash-500",
-                "pb-1"
-              )}
-            >
-              {item.label}
-            </Link>
-          ) : (
-            <span className="text-charcoal-500">{item.label}</span>
-          )}
+    <nav className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-lilac_ash-300 rounded-3xl">
+      <div className="flex flex-wrap items-center gap-2">
+        {items.map((item, index) => (
+          <React.Fragment key={index}>
+            {item.href ? (
+              <Link
+                href={item.href}
+                className={cn(
+                  "text-charcoal-700 hover:text-black-DEFAULT",
+                  "transition-colors duration-200",
+                  "px-2 py-1 rounded-xl hover:bg-lilac_ash-500/20 text-sm"
+                )}
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <span className="text-charcoal-700 px-2 py-1 text-sm">{item.label}</span>
+            )}
 
-          {/* Separator (only if not last item) */}
-          {index < items.length - 1 && (
-            <span className="text-charcoal-400 mx-1">›</span>
-          )}
-        </React.Fragment>
-      ))}
+            {index < items.length - 1 && (
+              <span className="text-charcoal-600">›</span>
+            )}
+          </React.Fragment>
+        ))}
 
-      {/* Current Page (non-clickable, highlighted) */}
-      <span className="text-charcoal-400 mx-1">›</span>
-      <span className={cn(
-        "text-lilac_ash-500 font-semibold",
-        "border-b-2 border-lilac_ash-500",
-        "pb-1"
-      )}>
-        {currentPage}
-      </span>
+        <span className="text-charcoal-600">›</span>
+        <span className={cn(
+          "text-black-DEFAULT font-semibold text-sm",
+          "bg-bright_snow-900 rounded-xl px-2 py-1"
+        )}>
+          {currentPage}
+        </span>
+      </div>
+
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </nav>
   );
 }

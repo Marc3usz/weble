@@ -2,10 +2,10 @@
 
 :root {
   --primary: #a7a2a9;
-  --background: #fdfdfd;
+  --background: #f8faf9;
   --foreground: #08090a;
   --muted: #575a5e;
-  --border: #434045;
+  --border: #a7a2a9;
   --accent: #a7a2a9;
   
   /* Override shadcn defaults for soft, squircle aesthetic */
@@ -15,7 +15,7 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  background-color: #fdfdfd;
+  background-color: #f8faf9;
 }
 
 /* Apply squircles to all interactive elements */
@@ -42,18 +42,13 @@ button[class*="bg-"]:hover {
   transform: translateY(-1px);
 }
 
-/* Override shadcn card/alert defaults */
+/* Filled cards and containers */
 [class*="rounded-3xl"],
 .card,
 [role="alert"] {
   border-radius: 24px !important;
-  box-shadow: 0 2px 8px rgba(8, 9, 10, 0.06);
-  border: 1px solid rgba(167, 162, 169, 0.1);
-}
-
-/* No harsh borders - use soft fills instead */
-[class*="border-"] {
-  border-color: rgba(167, 162, 169, 0.1) !important;
+  box-shadow: 0 10px 28px rgba(8, 9, 10, 0.08);
+  background-color: #f6f8f6 !important;
 }
 
 /* Input styling */
@@ -61,9 +56,52 @@ input,
 textarea,
 select {
   border-radius: 16px !important;
-  border: 1px solid rgba(167, 162, 169, 0.15) !important;
-  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid #cac7cc !important;
+  background-color: #f8faf9 !important;
   box-shadow: inset 0 1px 3px rgba(8, 9, 10, 0.04);
+}
+
+/* Explosion slider with always visible thumb */
+.explosion-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 10px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #878089 0%, #655f67 100%);
+  cursor: pointer;
+}
+
+.explosion-slider::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #878089 0%, #655f67 100%);
+}
+
+.explosion-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: #222022;
+  margin-top: -6px;
+  box-shadow: 0 2px 8px rgba(8, 9, 10, 0.35);
+}
+
+.explosion-slider::-moz-range-track {
+  height: 10px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #878089 0%, #655f67 100%);
+}
+
+.explosion-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 0;
+  background: #222022;
+  box-shadow: 0 2px 8px rgba(8, 9, 10, 0.35);
 }
 
 input:focus,
@@ -73,19 +111,20 @@ select:focus {
   box-shadow: inset 0 1px 3px rgba(8, 9, 10, 0.04), 0 0 0 3px rgba(167, 162, 169, 0.1);
 }
 
-/* Badge styling */
+/* Badge styling - more prominent */
 [class*="badge"],
 span[class*="rounded-full"] {
   border-radius: 20px !important;
-  background: rgba(167, 162, 169, 0.08);
+  background: #cac7cc !important;
   border: none !important;
+  color: #08090a !important;
 }
 
-/* Progress bar styling */
+/* Progress bar styling - more visible */
 [role="progressbar"],
 [class*="progress"] {
   border-radius: 16px !important;
-  background-color: rgba(167, 162, 169, 0.08);
+  background-color: #dcdadd !important;
   box-shadow: inset 0 1px 3px rgba(8, 9, 10, 0.04);
 }
 

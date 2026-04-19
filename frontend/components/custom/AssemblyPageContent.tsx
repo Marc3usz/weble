@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getAssembly } from "@/services/api";
@@ -10,7 +9,6 @@ import { AssemblyStep } from "@/types";
 import {
   Download,
   AlertCircle,
-  ChevronLeft,
 } from "lucide-react";
 import { StepCarouselSkeleton } from "@/components/custom/SkeletonComponents";
 import { AssemblyViewer } from "@/components/custom/AssemblyViewer";
@@ -21,7 +19,6 @@ interface AssemblyPageContentProps {
 }
 
 export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
-  const router = useRouter();
   const [steps, setSteps] = useState<AssemblyStep[] | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -54,24 +51,24 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
   };
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen px-4 py-8">
-      <div className="w-full max-w-7xl mx-auto space-y-6 flex-1">
+    <main className="flex-1 flex flex-col min-h-screen px-4 py-4 bg-gradient-to-br from-bright_snow-900 via-bright_snow-700 to-lilac_ash-800">
+      <div className="w-full max-w-7xl mx-auto space-y-4 flex-1">
         {/* Breadcrumb Navigation */}
         <Breadcrumb 
           items={[
             { label: "Upload", href: "/upload" },
-            { label: `Model ${modelId.slice(0, 8)}...`, href: `/parts/${modelId}` },
+            { label: `Model ${modelId.slice(0, 8)}...`, href: `/model/${modelId}` },
           ]}
           currentPage="Instrukcje"
         />
 
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-black-DEFAULT">
+          <h1 className="text-4xl font-bold text-charcoal-800">
             🔧 Instrukcje montażu
           </h1>
           {steps && !loading && (
-            <p className="text-charcoal-600">
+            <p className="text-charcoal-700">
               Krok {currentStep + 1} z {steps.length}
             </p>
           )}
@@ -79,7 +76,7 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
 
         {/* Error State */}
         {error && (
-          <Alert className="border-red-200 bg-red-50 rounded-3xl">
+          <Alert className="bg-red-50 rounded-3xl">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <AlertDescription className="text-red-800">{error}</AlertDescription>
           </Alert>
@@ -97,24 +94,24 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
 
         {/* Empty State */}
         {!loading && steps && steps.length === 0 && (
-          <div className="rounded-3xl p-12 bg-bright_snow-700 border border-lilac_ash-200 text-center">
-            <p className="text-charcoal-500">
+          <div className="rounded-3xl p-12 bg-lilac_ash-300 text-center">
+            <p className="text-charcoal-700">
               Brak instrukcji montażu do wyświetlenia
             </p>
           </div>
         )}
 
-        {/* Action Buttons - Bottom Centered */}
-        <div className="flex gap-4 justify-center flex-wrap pt-8 border-t border-lilac_ash-100">
+        {/* Action Buttons */}
+        <div className="flex gap-3 justify-center xl:justify-end flex-wrap py-2">
           <Link href={`/parts/${modelId}`}>
-            <Button className="px-8 py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl transition-colors">
+            <Button className="px-7 py-5 bg-lilac_ash-600 hover:bg-lilac_ash-700 text-bright_snow-900 font-semibold rounded-3xl transition-colors shadow-md hover:shadow-lg">
               📦 Części
             </Button>
           </Link>
 
           <Button
             onClick={handleExportSingleStep}
-            className="px-8 py-6 bg-lilac_ash-400 hover:bg-lilac_ash-500 text-black-DEFAULT font-semibold rounded-3xl transition-colors"
+            className="px-7 py-5 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl transition-colors shadow-md hover:shadow-lg"
           >
             <span className="flex items-center gap-2">
               <Download className="w-4 h-4" />
@@ -124,7 +121,7 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
 
           <Button
             onClick={handleExportFullPDF}
-            className="px-8 py-6 bg-lilac_ash-300 hover:bg-lilac_ash-400 text-black-DEFAULT font-semibold rounded-3xl transition-colors"
+            className="px-7 py-5 bg-lilac_ash-400 hover:bg-lilac_ash-500 text-charcoal-800 font-semibold rounded-3xl transition-colors shadow-md hover:shadow-lg"
           >
             <span className="flex items-center gap-2">
               <Download className="w-4 h-4" />
@@ -132,15 +129,6 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
             </span>
           </Button>
         </div>
-
-        {/* Back Button - Top Right */}
-        <button
-          onClick={() => router.push("/upload")}
-          className="hidden md:flex fixed top-8 right-8 items-center gap-2 px-6 py-3 text-charcoal-500 hover:text-lilac_ash-600 transition-colors text-sm"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Powrót do uploadu
-        </button>
       </div>
     </main>
   );

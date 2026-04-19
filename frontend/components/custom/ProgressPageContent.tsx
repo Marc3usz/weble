@@ -72,14 +72,14 @@ export function ProgressPageContent({
             <div className="text-center space-y-4">
               {!showViewer ? (
                 <>
-                  <h1 className="text-4xl font-bold text-black-DEFAULT">
+                  <h1 className="text-4xl font-bold text-charcoal-800">
                     Przetwarzanie pliku...
                   </h1>
                   <p className="text-charcoal-600">Proszę czekać, może to chwilę potrwać</p>
                 </>
               ) : (
                 <>
-                  <h1 className="text-4xl font-bold text-black-DEFAULT">
+                  <h1 className="text-4xl font-bold text-charcoal-800">
                     ✓ Model gotowy
                   </h1>
                   <p className="text-charcoal-600">Twój model jest gotowy do przeglądania</p>
@@ -123,16 +123,16 @@ export function ProgressPageContent({
             {/* Progress Bar */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-charcoal-600">
+                <span className="text-sm font-medium text-charcoal-700">
                   Postęp
                 </span>
-                <Badge variant="secondary" className="rounded-full bg-lilac_ash-100 text-lilac_ash-600">
+                <Badge variant="secondary" className="rounded-full bg-lilac_ash-300 text-charcoal-800">
                   {percentage}%
                 </Badge>
               </div>
               <Progress
                 value={percentage}
-                className="h-3 rounded-full bg-lilac_ash-100"
+                className="h-3 rounded-full bg-lilac_ash-200"
               />
             </div>
 
