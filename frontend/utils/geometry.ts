@@ -90,100 +90,23 @@ export function createBufferGeometry(
 }
 
 /**
- * Extract submesh vertices and indices for a specific solid based on bounding box
+ * Extract a submesh from full geometry for a specific solid
  * 
- * Since backend doesn't provide vertex ranges, we use a proximity-based approach:
- * For each vertex in the full geometry, determine which solid it belongs to by checking
- * which solid's bounding box is closest to that vertex.
+ * NOTE: Backend doesn't provide vertex ranges per solid, so we use a simple approach:
+ * Return the full geometry which is shared across all part meshes.
+ * Individual materials handle the highlighting (one material per part).
  * 
- * Returns a BufferGeometry containing only vertices/indices for the target solid
+ * TODO: Implement actual vertex range extraction when backend provides per-solid vertex data
  */
 export function extractSolidGeometry(
   fullGeometry: THREE.BufferGeometry,
   solidIndex: number,
   solids: Solid[]
 ): THREE.BufferGeometry {
-  const solid = solids[solidIndex];
-  if (!solid) {
-    console.warn(`Solid ${solidIndex} not found, returning full geometry`);
-    return fullGeometry.clone();
-  }
-
-  // Get vertex positions from the full geometry
-  const positions = fullGeometry.getAttribute("position") as THREE.BufferAttribute;
-  const normals = fullGeometry.getAttribute("normal") as THREE.BufferAttribute;
-  const indices = fullGeometry.getIndex() as THREE.BufferAttribute;
-  
-  if (!positions || !normals || !indices) {
-    return fullGeometry.clone();
-  }
-
-  // Create a mapping of original vertex indices to new indices
-  const vertexMap = new Map<number, number>();
-  const newVertices: number[] = [];
-  const newNormals: number[] = [];
-  const newIndices: number[] = [];
-
-  const bbox = solid.bounding_box;
-  const solidCenter = [
-    (bbox.max[0] + bbox.min[0]) / 2,
-    (bbox.max[1] + bbox.min[1]) / 2,
-    (bbox.max[2] + bbox.min[2]) / 2,
-  ];
-
-  // For each vertex, check if it's close to this solid's bounding box
-  const posArray = positions.array as Float32Array;
-  const normArray = normals.array as Float32Array;
-  let newVertexIndex = 0;
-
-  for (let i = 0; i < posArray.length; i += 3) {
-    const vx = posArray[i];
-    const vy = posArray[i + 1];
-    const vz = posArray[i + 2];
-    const originalIndex = i / 3;
-
-    // Check if vertex is within bounding box with small tolerance
-    const tolerance = 0.1;
-    if (
-      vx >= bbox.min[0] - tolerance && vx <= bbox.max[0] + tolerance &&
-      vy >= bbox.min[1] - tolerance && vy <= bbox.max[1] + tolerance &&
-      vz >= bbox.min[2] - tolerance && vz <= bbox.max[2] + tolerance
-    ) {
-      // Vertex belongs to this solid
-      vertexMap.set(originalIndex, newVertexIndex);
-      newVertices.push(vx, vy, vz);
-      newNormals.push(normArray[i], normArray[i + 1], normArray[i + 2]);
-      newVertexIndex++;
-    }
-  }
-
-  // Build new indices from old indices
-  const indicesArray = indices.array as Uint32Array;
-  for (let i = 0; i < indicesArray.length; i += 3) {
-    const idx0 = indicesArray[i];
-    const idx1 = indicesArray[i + 1];
-    const idx2 = indicesArray[i + 2];
-
-    // Only include triangle if all 3 vertices belong to this solid
-    const mappedIdx0 = vertexMap.get(idx0);
-    const mappedIdx1 = vertexMap.get(idx1);
-    const mappedIdx2 = vertexMap.get(idx2);
-
-    if (mappedIdx0 !== undefined && mappedIdx1 !== undefined && mappedIdx2 !== undefined) {
-      newIndices.push(mappedIdx0, mappedIdx1, mappedIdx2);
-    }
-  }
-
-  // Create new geometry with extracted vertices/indices
-  const newGeometry = new THREE.BufferGeometry();
-  newGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(newVertices), 3));
-  newGeometry.setAttribute("normal", new THREE.BufferAttribute(new Float32Array(newNormals), 3));
-  
-  if (newIndices.length > 0) {
-    newGeometry.setIndex(new THREE.BufferAttribute(new Uint32Array(newIndices), 1));
-  }
-
-  return newGeometry;
+  // For now, return the full geometry
+  // Each part mesh will get its own material for highlighting
+  // Explosion works by moving mesh positions, not geometry
+  return fullGeometry;
 }
 
 /**
