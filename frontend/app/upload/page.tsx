@@ -1,211 +1,204 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { useDropzone } from 'react-dropzone';
-import { useAppStore } from '@/app/store/appStore';
-import { useProgress } from '@/app/hooks/useProgress';
-import apiService from '@/app/services/api';
-import { AlertCircle, CheckCircle2, Upload } from 'lucide-react';
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { uploadFile } from "@/services/api";
+import { useAppStore } from "@/store/appStore";
+import { Upload, AlertCircle, CheckCircle, Loader } from "lucide-react";
+import Link from "next/link";
 
 export default function UploadPage() {
   const router = useRouter();
-  const {
-    processing,
-    setJobId,
-    setModelId,
-    setStatus,
-    setProgress,
-    setCurrentStage,
-    setError: setProcessingError,
-    resetProcessing,
-  } = useAppStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const setJobId = useAppStore((state) => state.setJobId);
 
-  const [isUploading, setIsUploading] = useState(false);
-  const [fileName, setFileName] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  // Stream progress
-  useProgress(processing.jobId, {
-    onProgress: (event) => {
-      setProgress(event.progress_percent);
-      setCurrentStage(event.current_stage);
-    },
-    onComplete: () => {
-      setStatus('complete');
-      // Redirect to viewer
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.name.endsWith(".step") || file.type.includes("step")) {
+        setSelectedFile(file);
+        setError(null);
+      } else {
+        setError("Proszę wybrać plik .step");
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (files && files.length > 0) {
+      setSelectedFile(files[0]);
+      setError(null);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await uploadFile(selectedFile);
+      setSuccess(true);
+
+      // Store the job ID and model ID in app store
+      setJobId(response.job_id, response.model_id);
+
+      // Redirect to progress page with model ID as query param
+      const modelIdParam = new URLSearchParams({
+        modelId: response.model_id,
+      }).toString();
+
       setTimeout(() => {
-        router.push(`/viewer/${processing.modelId}`);
-      }, 1500);
-    },
-    onError: (error) => {
-      setStatus('error');
-      setProcessingError(error);
-    },
-  });
-
-  const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      if (acceptedFiles.length === 0) return;
-
-      const file = acceptedFiles[0];
-
-      // Validate file type
-      if (!file.name.toLowerCase().match(/\.(step|stp)$/)) {
-        setProcessingError('Please upload a valid STEP/STP file');
-        return;
-      }
-
-      try {
-        setIsUploading(true);
-        setFileName(file.name);
-        setStatus('uploading');
-
-        // Upload file
-        const uploadResponse = await apiService.uploadStepFile(file);
-
-        setJobId(uploadResponse.job_id);
-        setModelId(uploadResponse.model_id);
-        setStatus('processing');
-      } catch (error) {
-        setStatus('error');
-        const message = error instanceof Error ? error.message : 'Upload failed';
-        setProcessingError(message);
-      } finally {
-        setIsUploading(false);
-      }
-    },
-    [setJobId, setModelId, setStatus, setProcessingError]
-  );
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'model/step': ['.step', '.stp'],
-    },
-    disabled: isUploading || processing.status === 'processing',
-    multiple: false,
-  });
-
-  const handleReset = () => {
-    resetProcessing();
-    setFileName('');
+        router.push(`/progress/${response.job_id}?${modelIdParam}`);
+      }, 500);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Błąd przy przesyłaniu pliku";
+      setError(errorMessage);
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <main className="flex-1 flex items-center justify-center min-h-screen px-4 py-8">
+      <div className="w-full max-w-2xl space-y-8">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">WEBLE</h1>
-          <p className="text-slate-600">Instrukcje montażu mebli wspierane sztuczną inteligencją</p>
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold text-black-DEFAULT">
+            Prześlij plik STEP
+          </h1>
+          <p className="text-charcoal-500">
+            Przeciągnij i upuść plik lub kliknij aby wybrać
+          </p>
         </div>
 
         {/* Upload Card */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          {processing.status === 'idle' || processing.status === 'error' ? (
-            <>
-              {/* Dropzone */}
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                  isDragActive
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-slate-300 hover:border-slate-400'
-                }`}
-              >
-                <input {...getInputProps()} />
-                <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
-                <p className="text-lg font-semibold text-slate-900 mb-2">
-                  Przeciągnij plik STEP/STP tutaj
-                </p>
-                <p className="text-sm text-slate-600 mb-4">
-                  lub kliknij, aby wybrać plik (max. 50 MB)
-                </p>
-                <p className="text-xs text-slate-500">Obsługiwane formaty: .step, .stp</p>
+        <Card className="border-2 border-dashed border-lilac_ash-300 rounded-3xl p-12 bg-bright_snow-500">
+          <div
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            className="text-center space-y-6"
+          >
+            {/* Upload Icon */}
+            <div className="flex justify-center">
+              <div className="p-4 bg-lilac_ash-100 rounded-3xl">
+                <Upload className="w-12 h-12 text-lilac_ash-500" />
               </div>
+            </div>
 
-              {/* Error Message */}
-              {processing.status === 'error' && processing.errorMessage && (
-                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-red-900">Błąd</p>
-                    <p className="text-sm text-red-700">{processing.errorMessage}</p>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Processing Status */}
-              <div className="space-y-6">
-                {/* File Info */}
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <p className="text-sm text-slate-600 mb-1">Przetwarzany plik:</p>
-                  <p className="font-semibold text-slate-900 truncate">{fileName}</p>
-                </div>
+            {/* Upload Text */}
+            <div className="space-y-2">
+              <p className="text-lg font-semibold text-black-DEFAULT">
+                Przeciągnij plik tutaj lub kliknij aby wybrać
+              </p>
+              <p className="text-sm text-charcoal-500">
+                Akceptowane pliki: .step
+              </p>
+            </div>
 
-                {/* Progress Bar */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-slate-900">Postęp przetwarzania</p>
-                    <p className="text-sm font-semibold text-blue-600">{processing.progress}%</p>
-                  </div>
-                  <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 h-full transition-all duration-300"
-                      style={{ width: `${processing.progress}%` }}
-                    />
-                  </div>
-                </div>
+            {/* Hidden File Input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".step"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
 
-                {/* Current Stage */}
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-slate-600 mb-1">Aktualny etap:</p>
-                  <p className="font-semibold text-slate-900">{processing.currentStage}</p>
-                </div>
+            {/* Upload Button */}
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="px-6 py-2 rounded-3xl border-lilac_ash-300 text-lilac_ash-500 hover:bg-lilac_ash-50"
+            >
+              Wybierz plik
+            </Button>
+          </div>
+        </Card>
 
-                {/* Completion Message */}
-                {processing.status === 'complete' && (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-green-900">Przetwarzanie ukończone!</p>
-                      <p className="text-sm text-green-700">Przekierowanie do podglądu...</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Error Message */}
-                {processing.errorMessage && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-red-900">Błąd przetwarzania</p>
-                      <p className="text-sm text-red-700">{processing.errorMessage}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Reset Button (on error) */}
-                {processing.errorMessage && (
-                  <button
-                    onClick={handleReset}
-                    className="w-full px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
-                  >
-                    Spróbuj ponownie
-                  </button>
-                )}
+        {/* Selected File Display */}
+        {selectedFile && !success && (
+          <Card className="rounded-3xl p-6 bg-bright_snow-600 border-lilac_ash-200">
+            <div className="flex items-center gap-4">
+              <CheckCircle className="w-6 h-6 text-lilac_ash-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-black-DEFAULT truncate">
+                  {selectedFile.name}
+                </p>
+                <p className="text-sm text-charcoal-500">
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </Card>
+        )}
 
-        {/* Footer */}
-        <div className="mt-8 text-center text-xs text-slate-500">
-          <p>WEBLE &copy; 2024 - Instrukcje montażu mebli</p>
+        {/* Error Alert */}
+        {error && (
+          <Alert className="border-red-200 bg-red-50 rounded-3xl">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Success Alert */}
+        {success && (
+          <Alert className="border-lilac_ash-200 bg-lilac_ash-50 rounded-3xl">
+            <CheckCircle className="h-4 w-4 text-lilac_ash-500" />
+            <AlertDescription className="text-lilac_ash-700">
+              Plik przesłany pomyślnie! Przekierowuję...
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-4 justify-center">
+          <Link href="/">
+            <Button
+              variant="outline"
+              className="px-8 py-6 rounded-3xl border-lilac_ash-300 text-charcoal-500"
+            >
+              ← Powrót
+            </Button>
+          </Link>
+
+          <Button
+            onClick={handleUpload}
+            disabled={!selectedFile || loading}
+            className="px-8 py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl disabled:opacity-50 transition-colors"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader className="w-4 h-4 animate-spin" />
+                Przesyłanie...
+              </span>
+            ) : (
+              "Przesłij"
+            )}
+          </Button>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

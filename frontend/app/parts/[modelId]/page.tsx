@@ -1,182 +1,191 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useAppStore } from '@/app/store/appStore';
-import apiService from '@/app/services/api';
-import { Part } from '@/app/types';
-import { AlertCircle, Loader2, ArrowLeft, ArrowRight } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getParts, exportAssemblyPDF } from "@/services/api";
+import { Part } from "@/types";
+import { Package2, Download, AlertCircle, Loader } from "lucide-react";
+import { PartGridSkeleton } from "@/components/custom/SkeletonComponents";
 
-export default function PartsPage() {
-  const router = useRouter();
-  const params = useParams();
-  const modelId = params.modelId as string;
+interface PartsPageProps {
+  params: {
+    modelId: string;
+  };
+}
 
-  const { model, setParts } = useAppStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>();
-  const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
+export default function PartsPage({ params }: PartsPageProps) {
+  const [parts, setParts] = useState<Part[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
-  // Load parts on mount
   useEffect(() => {
-    const loadParts = async () => {
-      if (!modelId) return;
-
+    const fetchParts = async () => {
       try {
-        setIsLoading(true);
-        const response = await apiService.generateParts2D(modelId);
+        setLoading(true);
+        const response = await getParts(params.modelId);
         setParts(response.parts);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Błąd wczytywania części';
-        setError(message);
+        const errorMessage =
+          err instanceof Error ? err.message : "Nie udało się załadować części";
+        setError(errorMessage);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
-    if (!model.parts) {
-      loadParts();
-    }
-  }, [modelId, model.parts, setParts]);
+    fetchParts();
+  }, [params.modelId]);
 
-  const handleGoToAssembly = async () => {
+  const handleExportPDF = async () => {
     try {
-      setIsLoading(true);
-      const response = await apiService.generateAssemblyAnalysis(modelId, false);
-      router.push(`/assembly/${modelId}`);
+      setExporting(true);
+      const blob = await exportAssemblyPDF(params.modelId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `parts-${params.modelId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd generowania instrukcji';
-      setError(message);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Nie udało się wyeksportować PDF"
+      );
     } finally {
-      setIsLoading(false);
+      setExporting(false);
     }
   };
-
-  const handleBack = () => {
-    router.push(`/viewer/${modelId}`);
-  };
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">
-        <div className="text-center max-w-sm">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <h3 className="font-semibold mb-2">Błąd</h3>
-          <p className="text-sm text-slate-400 mb-6">{error}</p>
-          <button
-            onClick={handleBack}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-sm font-medium"
-          >
-            Wróć
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col">
-      {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 p-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold">Części komponenty</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Znaleziono {model.parts?.length || 0} typu części
-          </p>
+    <main className="flex-1 flex items-center justify-center min-h-screen px-4 py-8">
+      <div className="w-full max-w-6xl space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold text-black-DEFAULT">📦 Części</h1>
+          {parts && !loading && (
+            <p className="text-charcoal-500">
+              Razem {parts.length} unikalnych części
+            </p>
+          )}
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
-        {isLoading && !model.parts ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-400" />
-              <p>Wczytywanie części...</p>
-            </div>
-          </div>
-        ) : !model.parts || model.parts.length === 0 ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <AlertCircle className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-              <p>Brak części do wyświetlenia</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Parts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-              {model.parts.map((part: Part) => (
-                <div
-                  key={part.id}
-                  onClick={() => setSelectedPartId(part.id)}
-                  className={`p-4 rounded-lg border transition-all cursor-pointer ${
-                    selectedPartId === part.id
-                      ? 'bg-blue-900 border-blue-500 ring-2 ring-blue-400'
-                      : 'bg-slate-800 border-slate-700 hover:border-slate-600'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold text-lg">Część {part.id}</h3>
-                      <p className="text-xs text-slate-400 mt-1">{part.part_type}</p>
-                    </div>
-                    {part.quantity > 1 && (
-                      <span className="bg-blue-600 px-2 py-1 rounded text-xs font-semibold">
-                        ×{part.quantity}
-                      </span>
+        {/* Error State */}
+        {error && (
+          <Alert className="border-red-200 bg-red-50 rounded-3xl">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <AlertDescription className="text-red-800">{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Loading State - Skeleton Grid */}
+        {loading && <PartGridSkeleton />}
+
+        {/* Parts Grid */}
+        {!loading && parts && parts.length > 0 && (
+          <div className="grid grid-cols-3 gap-6 animate-in fade-in duration-500">
+            {parts.map((part) => (
+              <Card
+                key={part.id}
+                className="rounded-3xl p-6 bg-bright_snow-600 border-lilac_ash-200 hover:border-lilac_ash-500 transition-all hover:shadow-md"
+              >
+                {/* Part Image Placeholder */}
+                <div className="w-full h-32 bg-lilac_ash-50 rounded-2xl mb-4 flex items-center justify-center">
+                  {part.svg_url ? (
+                    <img
+                      src={part.svg_url}
+                      alt={part.name}
+                      className="w-full h-full object-contain p-2"
+                    />
+                  ) : (
+                    <Package2 className="w-8 h-8 text-lilac_ash-300" />
+                  )}
+                </div>
+
+                {/* Part Info */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-black-DEFAULT line-clamp-2">
+                      {part.name}
+                    </h3>
+                    <Badge variant="secondary" className="mt-2 rounded-full bg-lilac_ash-100 text-lilac_ash-600">
+                      ×{part.quantity}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-1 text-sm">
+                    {part.type && (
+                      <p className="text-charcoal-500">
+                        <span className="font-medium text-black-DEFAULT">Typ:</span>{" "}
+                        {part.type}
+                      </p>
+                    )}
+                    {part.volume && (
+                      <p className="text-charcoal-500">
+                        <span className="font-medium text-black-DEFAULT">
+                          Objętość:
+                        </span>{" "}
+                        {part.volume.toFixed(2)} cm³
+                      </p>
                     )}
                   </div>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Objętość:</span>
-                      <span className="font-medium">{part.volume.toFixed(2)} cm³</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Wymiary:</span>
-                      <span className="font-medium text-right">
-                        {Object.entries(part.dimensions)
-                          .map(([key, val]) => `${key}: ${val.toFixed(1)}`)
-                          .join(' | ')}
-                      </span>
-                    </div>
-                  </div>
                 </div>
-              ))}
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={handleBack}
-                className="px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold flex items-center gap-2 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Wróć do podglądu
-              </button>
-
-              <button
-                onClick={handleGoToAssembly}
-                disabled={isLoading}
-                className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 disabled:from-slate-600 disabled:to-slate-600 disabled:opacity-50 rounded-lg font-semibold flex items-center gap-2 transition-all"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Generowanie...
-                  </>
-                ) : (
-                  <>
-                    Instrukcja montażu
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </div>
-          </>
+              </Card>
+            ))}
+          </div>
         )}
+
+        {/* Empty State */}
+        {!loading && parts && parts.length === 0 && (
+          <Card className="rounded-3xl p-12 bg-bright_snow-600 border-lilac_ash-200 text-center">
+            <Package2 className="w-12 h-12 text-lilac_ash-300 mx-auto mb-4" />
+            <p className="text-charcoal-500">Brak części do wyświetlenia</p>
+          </Card>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-4 justify-center flex-wrap pt-4">
+          <Link href={`/assembly/${params.modelId}`}>
+            <Button className="px-8 py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl transition-colors">
+              🔧 Instrukcje montażu
+            </Button>
+          </Link>
+
+          <Button
+            onClick={handleExportPDF}
+            disabled={exporting || !parts}
+            className="px-8 py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl transition-colors disabled:opacity-50"
+          >
+            {exporting ? (
+              <span className="flex items-center gap-2">
+                <Loader className="w-4 h-4 animate-spin" />
+                Eksport...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                Pobierz PDF
+              </span>
+            )}
+          </Button>
+
+          <Link href="/upload">
+            <Button
+              variant="outline"
+              className="px-8 py-6 rounded-3xl border-lilac_ash-300 text-charcoal-500"
+            >
+              ← Powrót
+            </Button>
+          </Link>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

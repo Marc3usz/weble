@@ -1,5 +1,6 @@
 """Stage 1: STEP Loading Service."""
 
+import asyncio
 import hashlib
 import logging
 import math
@@ -74,7 +75,10 @@ class StepLoaderService(PipelineStage):
         try:
             if cq is not None:
                 try:
-                    geometry = self._load_with_cadquery(file_content)
+                    # Run blocking CadQuery operation in thread pool
+                    geometry = await asyncio.get_event_loop().run_in_executor(
+                        None, self._load_with_cadquery, file_content
+                    )
                     self.logger.info(
                         "Loaded geometry via CadQuery: %s vertices",
                         len(geometry.vertices),
@@ -83,7 +87,10 @@ class StepLoaderService(PipelineStage):
                 except Exception as cad_error:
                     self.logger.warning("CadQuery loader failed, falling back: %s", cad_error)
 
-            geometry = self._load_with_step_text_fallback(file_content)
+            # Run blocking fallback operation in thread pool
+            geometry = await asyncio.get_event_loop().run_in_executor(
+                None, self._load_with_step_text_fallback, file_content
+            )
             self.logger.info(
                 "Loaded geometry via fallback parser: %s vertices",
                 len(geometry.vertices),
