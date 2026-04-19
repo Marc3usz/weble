@@ -48,6 +48,7 @@ export function PartsViewer({
         <GeometryViewer 
           modelId={modelId}
           explosionValue={explosionValue}
+          selectedPartId={selectedPartId ? parseInt(selectedPartId.split('-')[1] || '0') : undefined}
         />
         <ExplosionControl
           value={explosionValue}

@@ -105,6 +105,7 @@ interface GeometryViewerProps {
   onLoad?: () => void;
   onError?: (error: Error) => void;
   explosionValue?: number;
+  selectedPartId?: number;
 }
 
 /**
@@ -133,6 +134,7 @@ export function GeometryViewer({
   onLoad,
   onError,
   explosionValue = 0,
+  selectedPartId,
 }: GeometryViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -329,6 +331,29 @@ export function GeometryViewer({
       }
     }
   }, [geometry, parts, isLoading, onLoad, onError]);
+
+  // Handle part selection highlighting
+  useEffect(() => {
+    if (!meshesRef.current || meshesRef.current.size === 0) {
+      return;
+    }
+
+    meshesRef.current.forEach((mesh, partIndex) => {
+      if (mesh.material && !Array.isArray(mesh.material)) {
+        const material = mesh.material as THREE.MeshPhongMaterial;
+
+        if (partIndex === selectedPartId) {
+          // Highlight selected part
+          material.color.setHex(0x8a6ba8); // Dark purple
+          material.emissive.setHex(0x5a4b78); // Glow effect
+        } else {
+          // Normal color for non-selected parts
+          material.color.setHex(0xcccccc); // Light gray
+          material.emissive.setHex(0x000000); // No glow
+        }
+      }
+    });
+  }, [selectedPartId]);
 
   // Handle explosion value changes
   useEffect(() => {
