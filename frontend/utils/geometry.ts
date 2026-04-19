@@ -90,21 +90,100 @@ export function createBufferGeometry(
 }
 
 /**
- * Extract a submesh from full geometry for a specific solid
+ * Extract submesh vertices and indices for a specific solid based on bounding box
  * 
- * NOTE: Backend doesn't provide vertex ranges per solid, so for MVP we render
- * the full geometry. This function is a placeholder for future implementation.
+ * Since backend doesn't provide vertex ranges, we use a proximity-based approach:
+ * For each vertex in the full geometry, determine which solid it belongs to by checking
+ * which solid's bounding box is closest to that vertex.
  * 
- * TODO: Implement vertex range extraction when backend provides per-solid vertex data
- * TODO: Create cached submesh system to avoid re-creating same meshes
+ * Returns a BufferGeometry containing only vertices/indices for the target solid
  */
 export function extractSolidGeometry(
   fullGeometry: THREE.BufferGeometry,
-  solidIndex: number
+  solidIndex: number,
+  solids: Solid[]
 ): THREE.BufferGeometry {
-  // PLACEHOLDER: For MVP, return full geometry
-  // In production, we would extract only the vertices/indices for this solid
-  return fullGeometry.clone();
+  const solid = solids[solidIndex];
+  if (!solid) {
+    console.warn(`Solid ${solidIndex} not found, returning full geometry`);
+    return fullGeometry.clone();
+  }
+
+  // Get vertex positions from the full geometry
+  const positions = fullGeometry.getAttribute("position") as THREE.BufferAttribute;
+  const normals = fullGeometry.getAttribute("normal") as THREE.BufferAttribute;
+  const indices = fullGeometry.getIndex() as THREE.BufferAttribute;
+  
+  if (!positions || !normals || !indices) {
+    return fullGeometry.clone();
+  }
+
+  // Create a mapping of original vertex indices to new indices
+  const vertexMap = new Map<number, number>();
+  const newVertices: number[] = [];
+  const newNormals: number[] = [];
+  const newIndices: number[] = [];
+
+  const bbox = solid.bounding_box;
+  const solidCenter = [
+    (bbox.max[0] + bbox.min[0]) / 2,
+    (bbox.max[1] + bbox.min[1]) / 2,
+    (bbox.max[2] + bbox.min[2]) / 2,
+  ];
+
+  // For each vertex, check if it's close to this solid's bounding box
+  const posArray = positions.array as Float32Array;
+  const normArray = normals.array as Float32Array;
+  let newVertexIndex = 0;
+
+  for (let i = 0; i < posArray.length; i += 3) {
+    const vx = posArray[i];
+    const vy = posArray[i + 1];
+    const vz = posArray[i + 2];
+    const originalIndex = i / 3;
+
+    // Check if vertex is within bounding box with small tolerance
+    const tolerance = 0.1;
+    if (
+      vx >= bbox.min[0] - tolerance && vx <= bbox.max[0] + tolerance &&
+      vy >= bbox.min[1] - tolerance && vy <= bbox.max[1] + tolerance &&
+      vz >= bbox.min[2] - tolerance && vz <= bbox.max[2] + tolerance
+    ) {
+      // Vertex belongs to this solid
+      vertexMap.set(originalIndex, newVertexIndex);
+      newVertices.push(vx, vy, vz);
+      newNormals.push(normArray[i], normArray[i + 1], normArray[i + 2]);
+      newVertexIndex++;
+    }
+  }
+
+  // Build new indices from old indices
+  const indicesArray = indices.array as Uint32Array;
+  for (let i = 0; i < indicesArray.length; i += 3) {
+    const idx0 = indicesArray[i];
+    const idx1 = indicesArray[i + 1];
+    const idx2 = indicesArray[i + 2];
+
+    // Only include triangle if all 3 vertices belong to this solid
+    const mappedIdx0 = vertexMap.get(idx0);
+    const mappedIdx1 = vertexMap.get(idx1);
+    const mappedIdx2 = vertexMap.get(idx2);
+
+    if (mappedIdx0 !== undefined && mappedIdx1 !== undefined && mappedIdx2 !== undefined) {
+      newIndices.push(mappedIdx0, mappedIdx1, mappedIdx2);
+    }
+  }
+
+  // Create new geometry with extracted vertices/indices
+  const newGeometry = new THREE.BufferGeometry();
+  newGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(newVertices), 3));
+  newGeometry.setAttribute("normal", new THREE.BufferAttribute(new Float32Array(newNormals), 3));
+  
+  if (newIndices.length > 0) {
+    newGeometry.setIndex(new THREE.BufferAttribute(new Uint32Array(newIndices), 1));
+  }
+
+  return newGeometry;
 }
 
 /**
@@ -132,31 +211,31 @@ export function createPartMesh(
 /**
  * Create all meshes for parts from full geometry
  * 
+ * Each part gets its own extracted geometry AND its own material so:
+ * - Highlighting one part doesn't affect others
+ * - Explosion effect can move each part independently
+ * 
  * Returns a Map of partIndex -> THREE.Mesh for easy access during selection/highlighting
- * 
- * Optimization: Share geometry and material across all part meshes (saves memory)
- * 
- * TODO: Implement vertex range extraction to create per-part geometry
- * TODO: Add mesh optimization (LOD system)
- * TODO: Add frustum culling for performance with many parts
  */
 export function createPartMeshes(
   geometry: THREE.BufferGeometry,
-  parts: Part[]
+  parts: Part[],
+  solids: Solid[]
 ): Map<number, THREE.Mesh> {
   const meshes = new Map<number, THREE.Mesh>();
 
-  // Reuse material across all parts (saves memory)
-  const material = new THREE.MeshPhongMaterial({
-    color: 0xcccccc, // Light gray
-    side: THREE.DoubleSide,
-    wireframe: false,
-  });
-
   parts.forEach((part, partIndex) => {
-    // Reuse the same geometry (no cloning - more efficient)
-    // In production, we would use extracted submesh geometry for each part
-    const mesh = new THREE.Mesh(geometry, material);
+    // Extract geometry for this specific part/solid
+    const partGeometry = extractSolidGeometry(geometry, partIndex, solids);
+
+    // Create a unique material for each part
+    const material = new THREE.MeshPhongMaterial({
+      color: 0xcccccc, // Light gray
+      side: THREE.DoubleSide,
+      wireframe: false,
+    });
+
+    const mesh = new THREE.Mesh(partGeometry, material);
     mesh.userData = { partIndex };
     meshes.set(partIndex, mesh);
   });

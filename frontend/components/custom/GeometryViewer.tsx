@@ -296,14 +296,13 @@ export function GeometryViewer({
         bufferGeometry.scale(scale, scale, scale);
       }
 
-       // Create per-part meshes
-       // TODO: Replace with actual per-part geometry extraction when backend provides vertex ranges
-       const meshes = createPartMeshes(bufferGeometry, parts);
-       console.log(`[GeometryViewer] Created ${meshes.size} part meshes`);
-       meshes.forEach((mesh) => {
-         scene.add(mesh);
-       });
-       meshesRef.current = meshes;
+        // Create per-part meshes with extracted geometries
+        const meshes = createPartMeshes(bufferGeometry, parts, geometry.metadata.solids);
+        console.log(`[GeometryViewer] Created ${meshes.size} part meshes`);
+        meshes.forEach((mesh) => {
+          scene.add(mesh);
+        });
+        meshesRef.current = meshes;
 
        // Animation loop
        let frameCount = 0;
@@ -350,11 +349,12 @@ export function GeometryViewer({
             }
           }
           bufferGeometry.dispose();
-          // Dispose shared material (only once, since all meshes use the same one)
-          const firstMesh = meshes.values().next().value;
-          if (firstMesh?.material && !Array.isArray(firstMesh.material)) {
-            (firstMesh.material as THREE.Material).dispose();
-          }
+          // Dispose each mesh's individual material
+          meshes.forEach((mesh) => {
+            if (mesh.material && !Array.isArray(mesh.material)) {
+              (mesh.material as THREE.Material).dispose();
+            }
+          });
           renderer.dispose();
         };
     } catch (err) {
@@ -398,38 +398,37 @@ export function GeometryViewer({
     });
   }, [selectedPartId]);
 
-  // Handle explosion value changes
-  useEffect(() => {
-    if (!sceneRef.current || !meshesRef.current || meshesRef.current.size === 0) {
-      return;
-    }
+   // Handle explosion value changes
+   useEffect(() => {
+     if (!sceneRef.current || !meshesRef.current || meshesRef.current.size === 0) {
+       return;
+     }
 
-    // If no original positions saved, save them now
-    if (originalPositionsRef.current.size === 0) {
-      meshesRef.current.forEach((mesh, index) => {
-        originalPositionsRef.current.set(index, mesh.position.clone());
-      });
-    }
+     // If no original positions saved, save them now
+     if (originalPositionsRef.current.size === 0) {
+       meshesRef.current.forEach((mesh, index) => {
+         originalPositionsRef.current.set(index, mesh.position.clone());
+       });
+     }
 
-    // Apply explosion effect
-    meshesRef.current.forEach((mesh, index) => {
-      const originalPos = originalPositionsRef.current.get(index);
-      if (!originalPos) return;
+     // Apply explosion effect by moving each mesh
+     meshesRef.current.forEach((mesh, index) => {
+       const originalPos = originalPositionsRef.current.get(index);
+       if (!originalPos) return;
 
-      // Calculate explosion direction (away from origin)
-      const bbox = new THREE.Box3().setFromObject(mesh);
-      const center = bbox.getCenter(new THREE.Vector3());
-      const explosionDir = center.normalize();
+       // Calculate explosion direction from origin (center of model)
+       const meshWorldPos = mesh.getWorldPosition(new THREE.Vector3());
+       const directionFromCenter = meshWorldPos.normalize();
 
-      // Calculate new position based on explosion value (0-100)
-      const explosionAmount = (explosionValue / 100) * 3; // Max 3 units
-      const newPos = originalPos
-        .clone()
-        .add(explosionDir.multiplyScalar(explosionAmount));
+       // Calculate new position based on explosion value (0-100)
+       // Scale explosion distance: 0% = 0 units, 100% = 5 units from center
+       const explosionDistance = (explosionValue / 100) * 5;
+       const explosionOffset = directionFromCenter.multiplyScalar(explosionDistance);
 
-      mesh.position.copy(newPos);
-    });
-  }, [explosionValue]);
+       // Apply explosion to mesh position
+       mesh.position.copy(originalPos).add(explosionOffset);
+     });
+   }, [explosionValue]);
 
   if (error) {
     return (
