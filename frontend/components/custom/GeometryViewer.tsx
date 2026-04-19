@@ -9,42 +9,66 @@ import {
 } from "@/utils/geometry";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Simple OrbitControls implementation (no external dependency needed)
+// Quaternion-based OrbitControls implementation for smooth, intuitive rotation
 function createOrbitControls(camera: THREE.PerspectiveCamera, element: HTMLElement) {
-  const STATE = { NONE: -1, ROTATE: 0, ZOOM: 1, PAN: 2 };
+  const STATE = { NONE: -1, ROTATE: 0, ZOOM: 1 };
   let state = STATE.NONE;
 
-  const euler = new THREE.Euler(0, 0, 0, "YXZ");
-  const vector = new THREE.Vector3();
-  const normalizedVector = new THREE.Vector3();
+  // Target point (center of rotation)
+  const target = new THREE.Vector3(0, 0, 0);
+  
+  // Camera orientation stored as quaternion for smooth rotation
+  const quat = new THREE.Quaternion();
+  const quatInverse = new THREE.Quaternion();
+  
+  // Spherical coordinates for reference
+  const spherical = new THREE.Spherical();
+  spherical.setFromVector3(camera.position.clone().sub(target));
+  
+  // Store mouse position for delta calculation
+  let lastX = 0;
+  let lastY = 0;
 
-  let phi = 0;
-  let theta = 0;
-  let radius = camera.position.length();
+  // Helper to update camera position from spherical coordinates
+  const updateCameraPosition = () => {
+    const offset = new THREE.Vector3();
+    offset.setFromSphericalCoords(
+      spherical.radius,
+      spherical.phi,
+      spherical.theta
+    );
+    camera.position.copy(target).add(offset);
+    camera.lookAt(target);
+  };
 
   const onMouseDown = (event: MouseEvent) => {
-    if (event.button === 0) state = STATE.ROTATE;
-    if (event.button === 2) state = STATE.PAN;
+    if (event.button === 0) {
+      state = STATE.ROTATE;
+      lastX = event.clientX;
+      lastY = event.clientY;
+    }
   };
 
   const onMouseMove = (event: MouseEvent) => {
     if (state === STATE.ROTATE) {
-      const deltaX = (event.clientX - (onMouseDown as any).clientX) * 0.01;
-      const deltaY = (event.clientY - (onMouseDown as any).clientY) * 0.01;
-
-      theta -= deltaX;
-      phi -= deltaY;
-      phi = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, phi));
-
-      const x = radius * Math.sin(phi) * Math.cos(theta);
-      const y = radius * Math.cos(phi);
-      const z = radius * Math.sin(phi) * Math.sin(theta);
-
-      camera.position.set(x, y, z);
-      camera.lookAt(0, 0, 0);
-
-      (onMouseDown as any).clientX = event.clientX;
-      (onMouseDown as any).clientY = event.clientY;
+      const deltaX = event.clientX - lastX;
+      const deltaY = event.clientY - lastY;
+      
+      // Sensitivity of rotation (radians per pixel)
+      const rotationSpeed = 0.005;
+      
+      // Update spherical angles based on mouse movement
+      // Theta controls left-right rotation (horizontal)
+      spherical.theta -= deltaX * rotationSpeed;
+      
+      // Phi controls up-down rotation (vertical), clamp to avoid gimbal lock
+      spherical.phi -= deltaY * rotationSpeed;
+      spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+      
+      updateCameraPosition();
+      
+      lastX = event.clientX;
+      lastY = event.clientY;
     }
   };
 
@@ -54,48 +78,58 @@ function createOrbitControls(camera: THREE.PerspectiveCamera, element: HTMLEleme
 
   const onWheel = (event: WheelEvent) => {
     event.preventDefault();
-    const zoomSpeed = 0.1;
-    radius += event.deltaY > 0 ? zoomSpeed : -zoomSpeed;
-    radius = Math.max(2, Math.min(50, radius));
-
-    const x = radius * Math.sin(phi) * Math.cos(theta);
-    const y = radius * Math.cos(phi);
-    const z = radius * Math.sin(phi) * Math.sin(theta);
-
-    camera.position.set(x, y, z);
+    
+    // Zoom speed
+    const zoomDelta = event.deltaY > 0 ? 1.1 : 0.9;
+    spherical.radius *= zoomDelta;
+    
+    // Clamp zoom distance
+    spherical.radius = Math.max(2, Math.min(50, spherical.radius));
+    
+    updateCameraPosition();
   };
 
   const onDoubleClick = () => {
-    // Reset camera to default
-    radius = 10;
-    phi = Math.PI / 4;
-    theta = Math.PI / 4;
-
-    const x = radius * Math.sin(phi) * Math.cos(theta);
-    const y = radius * Math.cos(phi);
-    const z = radius * Math.sin(phi) * Math.sin(theta);
-
-    camera.position.set(x, y, z);
-    camera.lookAt(0, 0, 0);
+    // Reset camera to default isometric view
+    spherical.radius = 15;
+    spherical.phi = Math.PI / 4;      // 45 degrees from top
+    spherical.theta = Math.PI / 4;    // 45 degrees around
+    updateCameraPosition();
   };
 
-  element.addEventListener("mousedown", (e) => {
+  const handleMouseDown = (e: MouseEvent) => {
     onMouseDown(e);
-    (onMouseDown as any).clientX = e.clientX;
-    (onMouseDown as any).clientY = e.clientY;
-  });
-  element.addEventListener("mousemove", onMouseMove);
-  element.addEventListener("mouseup", onMouseUp);
-  element.addEventListener("wheel", onWheel, { passive: false });
-  element.addEventListener("dblclick", onDoubleClick);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    onMouseMove(e);
+  };
+
+  const handleMouseUp = () => {
+    onMouseUp();
+  };
+
+  const handleWheel = (e: WheelEvent) => {
+    onWheel(e);
+  };
+
+  const handleDoubleClick = () => {
+    onDoubleClick();
+  };
+
+  element.addEventListener("mousedown", handleMouseDown);
+  element.addEventListener("mousemove", handleMouseMove);
+  element.addEventListener("mouseup", handleMouseUp);
+  element.addEventListener("wheel", handleWheel, { passive: false });
+  element.addEventListener("dblclick", handleDoubleClick);
 
   return {
     dispose: () => {
-      element.removeEventListener("mousedown", onMouseDown);
-      element.removeEventListener("mousemove", onMouseMove);
-      element.removeEventListener("mouseup", onMouseUp);
-      element.removeEventListener("wheel", onWheel);
-      element.removeEventListener("dblclick", onDoubleClick);
+      element.removeEventListener("mousedown", handleMouseDown);
+      element.removeEventListener("mousemove", handleMouseMove);
+      element.removeEventListener("mouseup", handleMouseUp);
+      element.removeEventListener("wheel", handleWheel);
+      element.removeEventListener("dblclick", handleDoubleClick);
     }
   };
 }
