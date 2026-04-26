@@ -265,6 +265,7 @@ class PDFGeneratorService(PipelineStage):
         """Create assembly instruction pages with step-by-step diagrams."""
         elements = []
         styles = getSampleStyleSheet()
+        total_steps = len(assembly_steps)
 
         for i, step in enumerate(assembly_steps, 1):
             # Step header
@@ -339,10 +340,11 @@ class PDFGeneratorService(PipelineStage):
                     elements.append(Paragraph(f"• {tip}", tips_style))
                 elements.append(Spacer(1, 0.1 * inch))
 
-            # SVG Diagram (if available)
-            if step.svg_diagram:
+            # SVG Diagram - Use exploded_view_svg if available (Phase 1 enhanced)
+            diagram_to_use = step.exploded_view_svg or step.svg_diagram
+            if diagram_to_use:
                 try:
-                    diagram_image = self._svg_to_image(step.svg_diagram)
+                    diagram_image = self._svg_to_image(diagram_to_use)
                     if diagram_image:
                         elements.append(diagram_image)
                 except Exception as e:
@@ -366,7 +368,7 @@ class PDFGeneratorService(PipelineStage):
                 )
 
             # Page break between steps (except the last one)
-            if i < len(assembly_steps):
+            if i < total_steps:
                 elements.append(PageBreak())
 
         return elements

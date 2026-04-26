@@ -96,7 +96,7 @@ class AssemblyGeneratorService(PipelineStage):
 
                 svg_gen = ExplodedViewSVGGenerator()
                 for step in steps:
-                    step.exploded_view_svg = await svg_gen.generate_exploded_view(parts, step)
+                    step.exploded_view_svg = await svg_gen.generate_exploded_view(parts, step, total_steps=len(steps))
                     if step.exploded_view_svg:
                         step.svg_diagram = step.exploded_view_svg
                 self.logger.info(f"Generated {len(steps)} steps using LLM")
@@ -116,7 +116,7 @@ class AssemblyGeneratorService(PipelineStage):
 
             svg_gen = ExplodedViewSVGGenerator()
             for step in steps:
-                step.exploded_view_svg = await svg_gen.generate_exploded_view(parts, step)
+                step.exploded_view_svg = await svg_gen.generate_exploded_view(parts, step, total_steps=len(steps))
                 if step.exploded_view_svg:
                     step.svg_diagram = step.exploded_view_svg
         except Exception as e:

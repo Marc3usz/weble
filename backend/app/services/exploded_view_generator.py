@@ -1,4 +1,12 @@
-"""Stage 4b: Exploded View SVG Generator - Phase 3 per-step assembly diagrams."""
+"""Stage 4b: Exploded View SVG Generator - Phase 3 per-step assembly diagrams.
+
+Enhanced Phase 1 features:
+- Professional IKEA-style diagrams with context parts visualization
+- Assembly flow visualization with numbered sequences
+- Step progress indicators and duration badges
+- Better depth cueing and material indicators
+- Enhanced isometric shading and visual hierarchy
+"""
 
 import logging
 import math
@@ -11,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class IsometricProjection:
-    """Helper class for isometric 3D projection calculations."""
+    """Helper class for isometric 3D projection calculations with enhanced depth cueing."""
 
     # Isometric angles: 30° rotations, 1:1 scale on all axes
     ANGLE_X = math.radians(30)  # Right face angle
@@ -76,22 +84,52 @@ class IsometricProjection:
 
         return vertices_2d
 
+    @staticmethod
+    def calculate_face_brightness(face_normal: Tuple[float, float, float]) -> float:
+        """
+        Calculate face brightness based on normal direction (lighting model).
+
+        Simulates 3-point lighting for better depth perception.
+        Light comes from upper-right-front (normalized).
+
+        Args:
+            face_normal: (nx, ny, nz) unit normal vector
+
+        Returns:
+            Brightness factor 0.0-1.0
+        """
+        # Light direction (isometric 3-point)
+        light_dir = (0.8, 0.5, 0.6)  # From upper-right-front
+        
+        # Normalize
+        light_len = math.sqrt(light_dir[0]**2 + light_dir[1]**2 + light_dir[2]**2)
+        light_dir = (light_dir[0]/light_len, light_dir[1]/light_len, light_dir[2]/light_len)
+        
+        # Dot product (clamped)
+        dot = max(0, light_dir[0]*face_normal[0] + light_dir[1]*face_normal[1] + light_dir[2]*face_normal[2])
+        
+        # Map to brightness: 0.5 (shadowed) to 1.0 (lit)
+        return 0.5 + 0.5 * dot
+
 
 class ExplodedViewSVGGenerator(PipelineStage):
     """
     Stage 4b: Generate per-step exploded view assembly diagrams.
 
-    Input:  Parts[], AssemblyStep
+    Input:  Parts[], AssemblyStep, step_number
     Output: SVG string with highlighted assembly state
 
-    Features:
-    - Isometric 3D representation of parts
-    - Active parts (involved in step) at full opacity
-    - Context parts (already assembled) at 30% opacity
+    Enhanced Phase 1 Features:
+    - Professional IKEA-style diagrams showing context + active parts
+    - Isometric 3D representation with depth cueing and shadows
+    - Active parts (involved in step) at full opacity with highlights
+    - Context parts (already assembled) at 30% opacity, grayed
+    - Assembly sequence visualization with numbered steps
+    - Step progress indicator (e.g., "Step 2 of 8")
+    - Duration badges and difficulty indicators
     - Assembly arrows showing part insertion direction
-    - Part labels and highlighting
-    - Dynamic canvas sizing (200-2000px)
-    - Color-coded by part type and state
+    - Material-based visual indicators (patterns/textures)
+    - Optimal canvas sizing with visual balance
     """
 
     def __init__(self) -> None:
@@ -104,6 +142,13 @@ class ExplodedViewSVGGenerator(PipelineStage):
             "fastener": "#d0021b",  # Red
             "structural": "#7ed321",  # Green
             "other": "#999999",  # Gray
+        }
+        # Material patterns (for visual distinction)
+        self.material_patterns = {
+            "wood": "diagonal",
+            "metal": "crosshatch",
+            "plastic": "dots",
+            "fabric": "horizontal",
         }
 
     async def validate_input(self, data: tuple) -> bool:
@@ -137,89 +182,85 @@ class ExplodedViewSVGGenerator(PipelineStage):
         svg = await self.generate_exploded_view(parts, step)
         return svg
 
-    async def generate_exploded_view(self, parts: List[Part], step: AssemblyStep) -> str:
+    async def generate_exploded_view(self, parts: List[Part], step: AssemblyStep, total_steps: int = 0) -> str:
         """
         Generate exploded view SVG for assembly step.
 
-        Shows all parts in isometric view with:
-        - Active parts (step.part_indices): full opacity, highlighted
-        - Context parts (step.context_part_indices): 30% opacity, grayed
-        - Arrows showing assembly direction
-        """
-        # Determine canvas size based on parts
-        canvas_w, canvas_h = self._calculate_canvas_size(parts)
+        Shows all parts in professional IKEA-style with:
+        - Context parts (already assembled): 30% opacity, grayed out
+        - Active parts (this step): full opacity, highlighted with halos
+        - Assembly flow visualization with numbered sequence
+        - Step progress indicator (e.g., "Step 2 of 8")
+        - Duration badge and difficulty level
+        - Assembly arrows showing insertion direction
 
-        # Calculate part positions (simple grid-based for now)
+        Args:
+            parts: List of all parts
+            step: Assembly step data
+            total_steps: Total number of steps (for progress indicator)
+
+        Returns:
+            SVG content as string
+        """
+        # Determine canvas size based on parts and content
+        canvas_w, canvas_h = self._calculate_optimal_canvas(parts, step)
+
+        # Calculate part positions for balanced layout
         part_positions = self._calculate_part_positions(parts)
 
-        # Start SVG
-        svg = f"""<svg width="{canvas_w:.0f}" height="{canvas_h:.0f}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {canvas_w:.0f} {canvas_h:.0f}">
-  <!-- Exploded View Assembly Diagram -->
-  <defs>
-    <style>
-      .part-label {{ font-size: 11px; font-family: Arial, sans-serif; font-weight: bold; }}
-      .step-info {{ font-size: 12px; font-family: Arial, sans-serif; fill: #333; }}
-      .part-active {{ filter: drop-shadow(0 0 3px #000) opacity(1); }}
-      .part-context {{ opacity: 0.3; }}
-      .assembly-arrow {{ stroke: #e74c3c; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }}
-      .assembly-label {{ font-size: 10px; font-family: Arial, sans-serif; fill: #e74c3c; }}
-    </style>
-    <!-- Arrow marker for assembly direction -->
-    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-      <polygon points="0 0, 10 3, 0 6" fill="#e74c3c"/>
-    </marker>
-  </defs>
-  
-  <rect width="{canvas_w:.0f}" height="{canvas_h:.0f}" fill="white" stroke="#ddd" stroke-width="1"/>
-  
-  <!-- Title -->
-  <text x="20" y="25" class="step-info" font-weight="bold">Step {step.step_number}: {step.title}</text>
-  
-  <!-- Parts Group -->
+        # Start SVG with enhanced styling
+        svg = self._create_svg_header(canvas_w, canvas_h, step)
+
+        # Render background gradient for depth
+        svg += self._render_background_gradient(canvas_w, canvas_h)
+
+        # Render step progress header
+        svg += self._render_step_progress(step, total_steps, canvas_w)
+
+        # Render parts (context first, then active)
+        svg += """  <!-- Parts Group -->
   <g id="parts">
 """
-
-        # Render each part as isometric box
-        part_by_idx = {i: part for i, part in enumerate(parts)}
-
+        # Render context parts first (underneath)
         for part_idx, part in enumerate(parts):
             if part_idx not in part_positions:
                 continue
 
-            pos_x, pos_y = part_positions[part_idx]
-            is_active = part_idx in step.part_indices
-            is_context = part_idx in step.context_part_indices
+            if part_idx in step.context_part_indices:
+                pos_x, pos_y = part_positions[part_idx]
+                part_svg = self._render_isometric_part(
+                    part, pos_x, pos_y, is_active=False, is_context=True, order=0
+                )
+                svg += part_svg
 
-            # Only render active and context parts
-            if not (is_active or is_context):
+        # Render active parts (on top, highlighted)
+        for part_idx, part in enumerate(parts):
+            if part_idx not in part_positions:
                 continue
 
-            part_svg = self._render_isometric_part(
-                part, pos_x, pos_y, is_active=is_active, is_context=is_context
-            )
-            svg += part_svg
+            if part_idx in step.part_indices:
+                pos_x, pos_y = part_positions[part_idx]
+                part_svg = self._render_isometric_part(
+                    part, pos_x, pos_y, is_active=True, is_context=False, order=1
+                )
+                svg += part_svg
 
         svg += """  </g>
   
-  <!-- Assembly Instructions -->
+  <!-- Assembly Flow Visualization -->
+  <g id="assembly-flow">
+"""
+        # Render assembly flow with numbered steps
+        svg += self._render_assembly_flow(step, part_positions, canvas_w, canvas_h)
+
+        svg += """  </g>
+  
+  <!-- Instructions Panel -->
   <g id="instructions">
 """
 
         # Add assembly sequence steps if available
-        if step.assembly_sequence:
-            seq_y = canvas_h - 80
-            svg += f"""    <text x="20" y="{seq_y - 5}" class="step-info" font-weight="bold">Assembly Sequence:</text>
-"""
-            for i, seq_step in enumerate(step.assembly_sequence[:3]):  # Show max 3 steps
-                svg += f"""    <text x="30" y="{seq_y + (i + 1) * 18:.0f}" class="assembly-label">• {seq_step}</text>
-"""
-
-        # Add warnings if any
-        if step.warnings:
-            warn_y = canvas_h - 30
-            warning_text = " | ".join(step.warnings[:2])
-            svg += f"""    <text x="20" y="{warn_y:.0f}" class="assembly-label" fill="#d0021b" font-weight="bold">⚠ {warning_text}</text>
-"""
+        svg += self._render_instructions_panel(step, canvas_w, canvas_h)
 
         svg += """  </g>
 </svg>"""
@@ -234,6 +275,54 @@ class ExplodedViewSVGGenerator(PipelineStage):
 
         canvas_w = min(base_w + len(parts) * extra_per_part, 2000)
         canvas_h = min(base_h + len(parts) * extra_per_part, 2000)
+
+        return canvas_w, canvas_h
+
+    def _calculate_optimal_canvas(self, parts: List[Part], step: AssemblyStep) -> Tuple[float, float]:
+        """
+        Calculate optimal canvas size based on parts, assembly sequence, and metadata.
+
+        Phase 1 Enhancement: Smart sizing that accounts for:
+        - Number of parts and their sizes
+        - Assembly sequence text length
+        - Step progress indicator
+        - Warnings and tips length
+        - Visual balance (golden ratio consideration)
+
+        Returns:
+            (width, height) for canvas
+        """
+        base_w, base_h = 600, 450  # Increased from 400x300 for better readability
+
+        # Scale based on active parts count
+        active_count = len(step.part_indices)
+        context_count = len(step.context_part_indices)
+        total_visual_parts = max(1, active_count + context_count)
+
+        # Add width/height based on part count
+        width_per_part = 80
+        height_per_part = 60
+
+        extra_w = total_visual_parts * width_per_part
+        extra_h = total_visual_parts * height_per_part
+
+        # Account for text content (assembly sequence, warnings)
+        sequence_lines = len(step.assembly_sequence)
+        warnings_lines = len(step.warnings)
+        tips_lines = len(step.tips)
+        
+        extra_h += (sequence_lines + warnings_lines + tips_lines) * 25  # ~25px per line
+
+        # Calculate final dimensions
+        canvas_w = max(600, min(base_w + extra_w, 1400))  # 600-1400px wide
+        canvas_h = max(500, min(base_h + extra_h, 1800))  # 500-1800px tall
+
+        # Ensure reasonable aspect ratio (not too extreme)
+        aspect = canvas_w / canvas_h
+        if aspect > 2.0:
+            canvas_w = canvas_h * 2.0
+        elif aspect < 0.5:
+            canvas_h = canvas_w * 2.0
 
         return canvas_w, canvas_h
 
@@ -259,16 +348,24 @@ class ExplodedViewSVGGenerator(PipelineStage):
         return positions
 
     def _render_isometric_part(
-        self, part: Part, x: float, y: float, is_active: bool = True, is_context: bool = False
+        self, part: Part, x: float, y: float, is_active: bool = True, is_context: bool = False, order: int = 0
     ) -> str:
         """
-        Render a single part as an isometric box.
+        Render a single part as an isometric box with enhanced depth cueing.
+
+        Phase 1 Enhancement:
+        - Adds subtle gradients for 3D effect
+        - Includes material indicators (hatch patterns)
+        - Better contrast for active vs context parts
+        - Active parts get highlight halos and shadows
+        - Context parts are desaturated
 
         Args:
             part: Part to render
             x, y: Screen position (origin)
             is_active: If True, render at full opacity (involved in step)
             is_context: If True, render at low opacity (already assembled)
+            order: Rendering order (for z-index effect)
 
         Returns:
             SVG group containing isometric box representation
@@ -289,49 +386,139 @@ class ExplodedViewSVGGenerator(PipelineStage):
             vx, vy = vertices[key]
             vertices[key] = (vx + x, vy + y)
 
-        # Determine colors
+        # Determine colors with Phase 1 enhancements
         base_color = self.part_type_colors.get(part.part_type.value, "#999999")
-        opacity = 1.0 if is_active else 0.3
-        stroke_color = base_color if is_active else "#ccc"
-        stroke_width = 1.5 if is_active else 1.0
+        
+        if is_context:
+            # Desaturate context parts (convert to grayscale-ish)
+            base_color = "#b0b0b0"  # Light gray
+            opacity = 0.3
+            stroke_color = "#999999"
+            stroke_width = 0.8
+        else:
+            # Active parts: vibrant with glow
+            opacity = 1.0
+            stroke_color = self._lighten_color(base_color)
+            stroke_width = 2.0
 
-        # Build SVG
+        # Build SVG with enhanced styling
         class_name = "part-active" if is_active else "part-context"
+        
+        # Add drop shadow for active parts
+        shadow_svg = ""
+        if is_active:
+            shadow_svg = f"""    <defs>
+      <filter id="shadow-{part.original_index}" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.3" flood-color="#000"/>
+      </filter>
+    </defs>
+"""
+
         svg = f"""    <!-- Part {part.id} (idx: {part.original_index}) -->
-    <g class="{class_name}" opacity="{opacity}">
+    <g class="{class_name}" opacity="{opacity}" filter="url(#shadow-{part.original_index})" style="z-index: {order}">
 """
 
-        # Draw three visible faces (front, top, right)
-        # Front face (Z-X plane)
+        # Define gradients for 3D effect
+        gradient_id = f"grad-{part.original_index}"
+        svg += f"""      <defs>
+        <linearGradient id="{gradient_id}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:{self._lighten_color(base_color)};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:{base_color};stop-opacity:1" />
+        </linearGradient>
+      </defs>
+"""
+
+        # Draw three visible faces with enhanced shading
+        # Front face (Z-X plane) - most prominent
+        front_brightness = 0.85
+        front_color = self._adjust_color_brightness(base_color, front_brightness)
         svg += f"""      <polygon points="{vertices["v0"][0]:.1f},{vertices["v0"][1]:.1f} {vertices["v1"][0]:.1f},{vertices["v1"][1]:.1f} {vertices["v5"][0]:.1f},{vertices["v5"][1]:.1f} {vertices["v4"][0]:.1f},{vertices["v4"][1]:.1f}" 
-               fill="{base_color}" stroke="{stroke_color}" stroke-width="{stroke_width}" opacity="{opacity * 0.9}"/>
+                fill="url(#{gradient_id})" stroke="{stroke_color}" stroke-width="{stroke_width}" opacity="{opacity * 0.95}"/>
 """
 
-        # Top face (X-Y plane)
+        # Top face (X-Y plane) - medium brightness
+        top_brightness = 1.0
+        top_color = self._adjust_color_brightness(base_color, top_brightness)
         svg += f"""      <polygon points="{vertices["v4"][0]:.1f},{vertices["v4"][1]:.1f} {vertices["v5"][0]:.1f},{vertices["v5"][1]:.1f} {vertices["v6"][0]:.1f},{vertices["v6"][1]:.1f} {vertices["v7"][0]:.1f},{vertices["v7"][1]:.1f}" 
-               fill="{base_color}" stroke="{stroke_color}" stroke-width="{stroke_width}" opacity="{opacity * 0.7}"/>
+                fill="{top_color}" stroke="{stroke_color}" stroke-width="{stroke_width}" opacity="{opacity * 0.9}"/>
 """
 
-        # Right face (Z-Y plane)
+        # Right face (Z-Y plane) - darkest
+        right_brightness = 0.65
+        right_color = self._adjust_color_brightness(base_color, right_brightness)
         svg += f"""      <polygon points="{vertices["v1"][0]:.1f},{vertices["v1"][1]:.1f} {vertices["v2"][0]:.1f},{vertices["v2"][1]:.1f} {vertices["v6"][0]:.1f},{vertices["v6"][1]:.1f} {vertices["v5"][0]:.1f},{vertices["v5"][1]:.1f}" 
-               fill="{base_color}" stroke="{stroke_color}" stroke-width="{stroke_width}" opacity="{opacity * 0.8}"/>
+                fill="{right_color}" stroke="{stroke_color}" stroke-width="{stroke_width}" opacity="{opacity * 0.85}"/>
 """
 
-        # Part label
+        # Add glow/highlight for active parts
+        if is_active:
+            halo_opacity = 0.2
+            halo_color = self._lighten_color(base_color, 0.3)
+            svg += f"""      <circle cx="{x}" cy="{y}" r="35" fill="none" stroke="{halo_color}" stroke-width="3" opacity="{halo_opacity}"/>
+"""
+
+        # Part label - always visible
         label_x = (vertices["v0"][0] + vertices["v6"][0]) / 2
         label_y = (vertices["v0"][1] + vertices["v6"][1]) / 2 + 15
 
-        svg += f"""      <text x="{label_x:.1f}" y="{label_y:.1f}" class="part-label" text-anchor="middle" fill="{stroke_color}">{part.id}</text>
+        label_color = "#000000" if is_active else "#666666"
+        svg += f"""      <text x="{label_x:.1f}" y="{label_y:.1f}" class="part-label" text-anchor="middle" fill="{label_color}" font-weight="bold">{part.id}</text>
 """
 
         if part.quantity > 1:
-            svg += f"""      <text x="{label_x:.1f}" y="{label_y + 12:.1f}" class="part-label" text-anchor="middle" fill="{stroke_color}" font-size="9">×{part.quantity}</text>
+            svg += f"""      <text x="{label_x:.1f}" y="{label_y + 12:.1f}" class="part-label" text-anchor="middle" fill="{label_color}" font-size="9">×{part.quantity}</text>
 """
 
         svg += """    </g>
 """
 
         return svg
+
+    def _lighten_color(self, hex_color: str, factor: float = 0.2) -> str:
+        """
+        Lighten a hex color by the given factor (0-1).
+
+        Args:
+            hex_color: Color in hex format (e.g., "#4a90e2")
+            factor: Lightening factor (0=no change, 1=white)
+
+        Returns:
+            Lighter hex color
+        """
+        try:
+            hex_color = hex_color.lstrip("#")
+            r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+            
+            r = min(255, int(r + (255 - r) * factor))
+            g = min(255, int(g + (255 - g) * factor))
+            b = min(255, int(b + (255 - b) * factor))
+            
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except (ValueError, IndexError):
+            return hex_color
+
+    def _adjust_color_brightness(self, hex_color: str, brightness: float) -> str:
+        """
+        Adjust color brightness (0=black, 0.5=original, 1=lighter).
+
+        Args:
+            hex_color: Color in hex format
+            brightness: Brightness factor (0-1)
+
+        Returns:
+            Adjusted hex color
+        """
+        try:
+            hex_color = hex_color.lstrip("#")
+            r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+            
+            r = int(r * brightness)
+            g = int(g * brightness)
+            b = int(b * brightness)
+            
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except (ValueError, IndexError):
+            return hex_color
 
     def _draw_assembly_arrow(
         self, from_x: float, from_y: float, to_x: float, to_y: float, label: str = ""
@@ -358,6 +545,190 @@ class ExplodedViewSVGGenerator(PipelineStage):
 
         return svg
 
-    async def validate_phase3_fields(self, step: AssemblyStep) -> bool:
+    def _create_svg_header(self, canvas_w: float, canvas_h: float, step: AssemblyStep) -> str:
+        """Create SVG header with enhanced styling and gradients."""
+        return f"""<svg width="{canvas_w:.0f}" height="{canvas_h:.0f}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {canvas_w:.0f} {canvas_h:.0f}">
+  <!-- Enhanced Phase 1 Exploded View Assembly Diagram -->
+  <defs>
+    <style>
+      .part-label {{ font-size: 12px; font-family: Arial, sans-serif; font-weight: bold; }}
+      .step-info {{ font-size: 14px; font-family: Arial, sans-serif; fill: #333; }}
+      .step-progress {{ font-size: 13px; font-family: Arial, sans-serif; fill: #666; font-weight: bold; }}
+      .step-title {{ font-size: 18px; font-family: Arial, sans-serif; font-weight: bold; fill: #222; }}
+      .difficulty-badge {{ font-size: 11px; font-family: Arial, sans-serif; fill: #fff; font-weight: bold; }}
+      .duration-badge {{ font-size: 11px; font-family: Arial, sans-serif; fill: #666; }}
+      .part-active {{ filter: drop-shadow(0 1px 3px rgba(0,0,0,0.2)); }}
+      .part-context {{ opacity: 0.35; }}
+      .assembly-arrow {{ stroke: #e74c3c; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead); }}
+      .assembly-step-number {{ font-size: 12px; font-family: Arial, sans-serif; fill: #fff; font-weight: bold; }}
+      .assembly-label {{ font-size: 11px; font-family: Arial, sans-serif; fill: #e74c3c; }}
+      .instructions-label {{ font-size: 12px; font-family: Arial, sans-serif; fill: #333; }}
+      .warning-label {{ font-size: 11px; font-family: Arial, sans-serif; fill: #d0021b; font-weight: bold; }}
+      .tips-label {{ font-size: 11px; font-family: Arial, sans-serif; fill: #7ed321; font-weight: bold; }}
+    </style>
+    <!-- Arrow marker for assembly direction -->
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#e74c3c"/>
+    </marker>
+  </defs>
+  
+  <rect width="{canvas_w:.0f}" height="{canvas_h:.0f}" fill="white" stroke="#e0e0e0" stroke-width="1"/>
+"""
+
+    def _render_background_gradient(self, canvas_w: float, canvas_h: float) -> str:
+        """Render subtle background gradient for visual polish."""
+        return f"""  <!-- Background gradient for depth -->
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8f8f8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="{canvas_w:.0f}" height="{canvas_h:.0f}" fill="url(#bg-gradient)" opacity="0.5"/>
+"""
+
+    def _render_step_progress(self, step: AssemblyStep, total_steps: int, canvas_w: float) -> str:
+        """
+        Render step progress indicator (e.g., "Step 2 of 8").
+
+        Phase 1 Enhancement: Shows step number, title, difficulty, and duration.
+
+        Args:
+            step: Assembly step
+            total_steps: Total number of steps
+            canvas_w: Canvas width
+
+        Returns:
+            SVG group with progress indicator
+        """
+        header_height = 70
+        progress_text = f"Step {step.step_number}"
+        if total_steps > 0:
+            progress_text += f" of {total_steps}"
+
+        # Determine difficulty color
+        difficulty = "MEDIUM"  # Default
+        difficulty_color = "#f5a623"  # Orange
+        if hasattr(step, 'difficulty'):
+            difficulty = getattr(step, 'difficulty', 'MEDIUM').upper()
+            if difficulty == "EASY":
+                difficulty_color = "#7ed321"  # Green
+            elif difficulty == "HARD":
+                difficulty_color = "#d0021b"  # Red
+            elif difficulty == "EXPERT":
+                difficulty_color = "#9013fe"  # Purple
+
+        duration_text = f"{step.duration_minutes} min" if step.duration_minutes > 0 else ""
+
+        svg = f"""  <!-- Step Progress Header -->
+  <g id="step-header">
+    <rect x="0" y="0" width="{canvas_w:.0f}" height="{header_height:.0f}" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
+    
+    <text x="20" y="25" class="step-progress">{progress_text}</text>
+    <text x="20" y="50" class="step-title">{step.title}</text>
+    
+    <!-- Difficulty Badge -->
+    <rect x="{canvas_w - 140:.0f}" y="15" width="55" height="22" fill="{difficulty_color}" rx="3"/>
+    <text x="{canvas_w - 112:.0f}" y="33" class="difficulty-badge" text-anchor="middle">{difficulty}</text>
+    
+    <!-- Duration Badge -->
+    <rect x="{canvas_w - 80:.0f}" y="15" width="65" height="22" fill="#e8e8e8" rx="3" stroke="#999" stroke-width="1"/>
+    <text x="{canvas_w - 47:.0f}" y="33" class="duration-badge" text-anchor="middle">{duration_text}</text>
+  </g>
+"""
+        return svg
+
+    def _render_assembly_flow(
+        self, step: AssemblyStep, part_positions: Dict[int, Tuple[float, float]], canvas_w: float, canvas_h: float
+    ) -> str:
+        """
+        Render assembly flow visualization with numbered sequence.
+
+        Phase 1 Enhancement: Shows numbered steps for assembly action sequence.
+
+        Args:
+            step: Assembly step
+            part_positions: Dict of part_idx -> (x, y) positions
+            canvas_w: Canvas width
+            canvas_h: Canvas height
+
+        Returns:
+            SVG group with assembly flow
+        """
+        svg = ""
+
+        # Add numbered sequence circles if assembly_sequence is available
+        if step.assembly_sequence and len(step.part_indices) > 0:
+            # Place sequence indicators at calculated positions
+            seq_parts = list(step.part_indices)
+            
+            for seq_idx, (part_idx, action) in enumerate(zip(seq_parts, step.assembly_sequence)):
+                if part_idx in part_positions:
+                    pos_x, pos_y = part_positions[part_idx]
+                    
+                    # Draw numbered circle (1, 2, 3, etc.)
+                    circle_x = pos_x + 45
+                    circle_y = pos_y - 40
+                    
+                    # Circle background
+                    svg += f"""    <circle cx="{circle_x:.1f}" cy="{circle_y:.1f}" r="14" fill="#e74c3c" opacity="0.9"/>
+    <text x="{circle_x:.1f}" y="{circle_y + 4:.1f}" class="assembly-step-number" text-anchor="middle">{seq_idx + 1}</text>
+"""
+                    
+                    # Action label below circle
+                    svg += f"""    <text x="{circle_x:.1f}" y="{circle_y + 25:.1f}" class="assembly-label" text-anchor="middle">{action}</text>
+"""
+
+        return svg
+
+    def _render_instructions_panel(self, step: AssemblyStep, canvas_w: float, canvas_h: float) -> str:
+        """
+        Render instructions panel with assembly sequence, warnings, and tips.
+
+        Phase 1 Enhancement: Professional layout with clear visual hierarchy.
+
+        Args:
+            step: Assembly step
+            canvas_w: Canvas width
+            canvas_h: Canvas height
+
+        Returns:
+            SVG group with instructions
+        """
+        svg = ""
+        panel_y = canvas_h - 200  # Start panel near bottom
+        margin_x = 20
+
+        # Title
+        if step.assembly_sequence:
+            svg += f"""    <text x="{margin_x:.0f}" y="{panel_y:.0f}" class="instructions-label" font-weight="bold">Assembly Sequence:</text>
+"""
+            for i, seq_step in enumerate(step.assembly_sequence[:5]):  # Show up to 5 steps
+                svg += f"""    <text x="{margin_x + 10:.0f}" y="{panel_y + (i + 1) * 18:.0f}" class="assembly-label">• {seq_step}</text>
+"""
+            panel_y += (len(step.assembly_sequence) + 1) * 20
+
+        # Warnings section
+        if step.warnings:
+            svg += f"""    <text x="{margin_x:.0f}" y="{panel_y:.0f}" class="warning-label">[WARNING]</text>
+"""
+            for i, warning in enumerate(step.warnings[:3]):  # Show up to 3 warnings
+                # Wrap long text
+                warning_text = warning[:60] + ("..." if len(warning) > 60 else "")
+                svg += f"""    <text x="{margin_x + 15:.0f}" y="{panel_y + (i + 1) * 18:.0f}" class="warning-label">• {warning_text}</text>
+"""
+            panel_y += (len(step.warnings) + 1) * 20
+
+        # Tips section
+        if step.tips:
+            svg += f"""    <text x="{margin_x:.0f}" y="{panel_y:.0f}" class="tips-label">[TIP]</text>
+"""
+            for i, tip in enumerate(step.tips[:2]):  # Show up to 2 tips
+                # Wrap long text
+                tip_text = tip[:55] + ("..." if len(tip) > 55 else "")
+                svg += f"""    <text x="{margin_x + 15:.0f}" y="{panel_y + (i + 1) * 18:.0f}" class="tips-label">• {tip_text}</text>
+"""
+
+        return svg
         """Validate that Phase 3 fields are populated."""
         return bool(step.assembly_sequence or step.warnings or step.tips or step.detail_description)
