@@ -367,21 +367,50 @@ export function GeometryViewer({
        orthoCamera.position.copy(perspectiveCamera.position);
        orthoCamera.lookAt(0, 0, 0);
 
-       const camera = projectionMode === "ortho" ? orthoCamera : perspectiveCamera;
+        const camera = projectionMode === "ortho" ? orthoCamera : perspectiveCamera;
 
-       // Renderer setup
-       const renderer = new THREE.WebGLRenderer({
-         antialias: true,
-         alpha: true,
-       });
-       renderer.setSize(width, height);
-       renderer.setPixelRatio(window.devicePixelRatio);
-       console.log("[GeometryViewer] Three.js setup complete:", {
-         width,
-         height,
-         pixelRatio: window.devicePixelRatio,
-       });
-       containerRef.current.appendChild(renderer.domElement);
+        // Renderer setup with AMD GPU workaround
+        let renderer: THREE.WebGLRenderer;
+        try {
+          renderer = new THREE.WebGLRenderer({
+            antialias: false,  // AMD GPU workaround - disable for stability
+            alpha: true,
+            powerPreference: "high-performance",
+            failIfMajorPerformanceCaveat: false,
+            preserveDrawingBuffer: false,
+            precision: "mediump",  // Use medium precision for AMD compatibility
+            logarithmicDepthBuffer: false,  // Disable for AMD compatibility
+          });
+        } catch (error) {
+          console.error("[GeometryViewer] WebGL renderer creation failed:", error);
+          setError("WebGL rendering not available. Your GPU may not support 3D rendering.");
+          return;
+        }
+
+        // Check if renderer context was created successfully
+        if (!renderer.getContext().getParameter(renderer.getContext().VERSION)) {
+          setError("WebGL context creation failed. Please update your graphics drivers.");
+          renderer.dispose();
+          return;
+        }
+
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        console.log("[GeometryViewer] Three.js setup complete:", {
+          width,
+          height,
+          pixelRatio: window.devicePixelRatio,
+          gpuVendor: renderer.getContext().getParameter(renderer.getContext().VENDOR),
+        });
+        
+        try {
+          containerRef.current.appendChild(renderer.domElement);
+        } catch (error) {
+          console.error("[GeometryViewer] Failed to append renderer to DOM:", error);
+          renderer.dispose();
+          setError("Failed to initialize 3D viewer.");
+          return;
+        }
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);

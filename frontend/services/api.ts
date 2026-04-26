@@ -198,19 +198,27 @@ export async function getGeometry(modelId: string): Promise<Geometry> {
 export async function exportAssemblyPDF(
   modelId: string,
   stepIndex?: number
-): Promise<Blob> {
+): Promise<void> {
   const response = await apiClient.post(
     "/api/v1/step/export-pdf",
     {
-      model_id: modelId,
-      step_index: stepIndex,
+      modelId: modelId,
+      include_drawings: true,
     },
     {
       responseType: "blob",
     }
   );
 
-  return response.data;
+  // Trigger download
+  const url = window.URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `assembly_instructions_${modelId.slice(0, 8)}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
 }
 
 // Check job status

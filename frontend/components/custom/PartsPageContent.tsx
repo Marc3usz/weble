@@ -4,9 +4,9 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getParts } from "@/services/api";
+import { getParts, exportAssemblyPDF } from "@/services/api";
 import { Part } from "@/types";
-import { Download, AlertCircle } from "lucide-react";
+import { Download, AlertCircle, Loader } from "lucide-react";
 import { PartGridSkeleton } from "@/components/custom/SkeletonComponents";
 import { PartsViewer } from "@/components/custom/PartsViewer";
 import { Breadcrumb } from "@/components/custom/Breadcrumb";
@@ -20,6 +20,8 @@ export function PartsPageContent({ modelId }: PartsPageContentProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [explosionValue, setExplosionValue] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchParts = async () => {
@@ -40,7 +42,20 @@ export function PartsPageContent({ modelId }: PartsPageContentProps) {
   }, [modelId]);
 
   const handleExportPDF = async () => {
-    alert("Eksport PDF nie jest jeszcze dostępny. Ta funkcja będzie wkrótce dodana.");
+    try {
+      setExporting(true);
+      setExportError(null);
+      
+      await exportAssemblyPDF(modelId);
+      
+      // Success - file will be downloaded by the API
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Nie udało się wyeksportować PDF";
+      setExportError(errorMessage);
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -63,11 +78,16 @@ export function PartsPageContent({ modelId }: PartsPageContentProps) {
 
               <Button
                 onClick={handleExportPDF}
-                className="h-9 px-4 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-2xl transition-colors"
+                disabled={exporting}
+                className="h-9 px-4 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-2xl transition-colors disabled:opacity-50"
               >
                 <span className="flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  PDF
+                  {exporting ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  {exporting ? "Generowanie..." : "PDF"}
                 </span>
               </Button>
             </>
@@ -79,6 +99,14 @@ export function PartsPageContent({ modelId }: PartsPageContentProps) {
           <Alert className="bg-red-50 rounded-3xl">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <AlertDescription className="text-red-800">{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Export Error State */}
+        {exportError && (
+          <Alert className="bg-red-50 rounded-3xl">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <AlertDescription className="text-red-800">{exportError}</AlertDescription>
           </Alert>
         )}
 

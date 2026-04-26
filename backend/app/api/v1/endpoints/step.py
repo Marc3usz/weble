@@ -2,9 +2,10 @@ import uuid
 import logging
 import json
 from datetime import datetime
+from io import BytesIO
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse, FileResponse
 
 from app.container import get_container, ServiceContainer
 from app.core.config import settings
@@ -22,6 +23,7 @@ from app.services.assembly_generator import AssemblyGeneratorService
 from app.services.parts_extractor import PartsExtractorService
 from app.services.step_loader import StepLoaderService
 from app.services.svg_generator import SvgGeneratorService
+from app.services.pdf_generator import PDFGeneratorService
 from app.workers.pipeline import ProcessingPipeline
 
 """STEP file processing endpoints."""
@@ -140,7 +142,7 @@ async def get_step_model(
 
 @router.post("/step/parts-2d", response_model=PartsResponse)
 async def generate_parts_2d(
-    payload: dict,
+    payload: dict = Body(...),
     container: ServiceContainer = Depends(get_container),
 ) -> PartsResponse:
     """Generate or return extracted parts with 2D drawing metadata.
@@ -197,7 +199,7 @@ async def generate_parts_2d(
 
 @router.post("/step/assembly-analysis", response_model=AssemblyResponse)
 async def generate_assembly_analysis(
-    payload: dict,
+    payload: dict = Body(...),
     preview_only: bool = False,
     force_regenerate: bool = False,
     container: ServiceContainer = Depends(get_container),
@@ -403,3 +405,104 @@ async def get_job_status(
         "eta_seconds": job.eta_seconds,
         "error_message": job.error_message,
     }
+
+
+@router.post("/step/export-pdf")
+async def export_assembly_pdf(
+    payload: dict = Body(...),
+    container: ServiceContainer = Depends(get_container),
+) -> StreamingResponse:
+    """Export assembly instructions as a professional PDF.
+
+    Generates a complete assembly manual including:
+    - Title page with model information
+    - Parts list with specifications and drawings
+    - Step-by-step assembly instructions with diagrams
+    - Technical drawings and 3D visualizations
+
+    Args:
+        payload: Request body with:
+            - model_id or modelId: UUID of the model to export
+            - include_drawings: Whether to include SVG drawings (default: true)
+        container: Service container with repository
+
+    Returns:
+        PDF file as StreamingResponse
+
+    Raises:
+        HTTPException: If model not found, or required data is unavailable
+    """
+    model_id = payload.get("modelId") or payload.get("model_id")
+    if not model_id:
+        raise HTTPException(status_code=400, detail="modelId is required")
+
+    include_drawings = payload.get("include_drawings", True)
+
+    repository = await container.get_repository()
+
+    # Verify model exists
+    model = await repository.get_model(model_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    logger.info(f"Exporting PDF for model {model_id}")
+
+    try:
+        # Fetch all required data
+        geometry = await repository.get_geometry(model_id)
+        parts = await repository.get_parts(model_id)
+        drawings = await repository.get_drawings(model_id)
+        steps = await repository.get_steps(model_id)
+
+        # Validate we have required data
+        if not parts:
+            raise HTTPException(
+                status_code=400,
+                detail="Parts data not available. Please process the model first.",
+            )
+
+        if not steps:
+            raise HTTPException(
+                status_code=400,
+                detail="Assembly steps not available. Please generate assembly analysis first.",
+            )
+
+        # Generate PDF
+        pdf_generator = PDFGeneratorService()
+
+        filename = model.get("file_name", "model.stp")
+        model_name = filename.split(".")[0]  # Remove extension
+
+        # Ensure drawings is a list
+        drawings_list = drawings if include_drawings and drawings else []
+
+        pdf_bytes = await pdf_generator.generate_assembly_pdf(
+            filename=filename,
+            model_name=model_name,
+            parts=parts,
+            svg_drawings=drawings_list,
+            assembly_steps=steps,
+        )
+
+        logger.info(f"PDF export complete for model {model_id}: {len(pdf_bytes)} bytes")
+
+        # Return as streaming response
+        def iter_bytes():
+            yield pdf_bytes
+
+        return StreamingResponse(
+            iter_bytes(),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={model_name}_assembly_instructions.pdf"
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PDF export failed for model {model_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate PDF: {str(e)}"
+        )
+

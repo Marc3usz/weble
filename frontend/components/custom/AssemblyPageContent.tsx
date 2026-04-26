@@ -4,11 +4,12 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getAssembly } from "@/services/api";
+import { getAssembly, exportAssemblyPDF } from "@/services/api";
 import { AssemblyStep } from "@/types";
 import {
   Download,
   AlertCircle,
+  Loader,
 } from "lucide-react";
 import { StepCarouselSkeleton } from "@/components/custom/SkeletonComponents";
 import { AssemblyViewer } from "@/components/custom/AssemblyViewer";
@@ -24,6 +25,8 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
   const [selectedPartIndex, setSelectedPartIndex] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAssembly = async () => {
@@ -50,11 +53,25 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
   }, [modelId]);
 
   const handleExportSingleStep = async () => {
-    alert("Eksport PDF nie jest jeszcze dostępny. Ta funkcja będzie wkrótce dodana.");
+    // TODO: Implement single step PDF export in future version
+    alert("Eksport PDF pojedynczego kroku będzie dostępny w przyszłych wersjach.");
   };
 
   const handleExportFullPDF = async () => {
-    alert("Eksport PDF nie jest jeszcze dostępny. Ta funkcja będzie wkrótce dodana.");
+    try {
+      setExporting(true);
+      setExportError(null);
+      
+      await exportAssemblyPDF(modelId);
+      
+      // Success - file will be downloaded by the API
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Nie udało się wyeksportować PDF";
+      setExportError(errorMessage);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handlePreviousStep = () => {
@@ -125,11 +142,16 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
 
               <Button
                 onClick={handleExportFullPDF}
-                className="h-9 px-4 bg-lilac_ash-400 hover:bg-lilac_ash-500 text-charcoal-800 font-semibold rounded-2xl transition-colors"
+                disabled={exporting}
+                className="h-9 px-4 bg-lilac_ash-400 hover:bg-lilac_ash-500 text-charcoal-800 font-semibold rounded-2xl transition-colors disabled:opacity-50"
               >
                 <span className="flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  PDF Wszystkie
+                  {exporting ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  {exporting ? "Generowanie..." : "PDF Wszystkie"}
                 </span>
               </Button>
             </>
@@ -149,6 +171,14 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
           <Alert className="bg-red-50 rounded-3xl">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <AlertDescription className="text-red-800">{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Export Error State */}
+        {exportError && (
+          <Alert className="bg-red-50 rounded-3xl">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <AlertDescription className="text-red-800">{exportError}</AlertDescription>
           </Alert>
         )}
 

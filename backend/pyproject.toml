@@ -31,6 +31,10 @@ dependencies = [
     # HTTP Client (for LLM API)
     "httpx>=0.25.0",
 
+    # PDF Generation
+    "reportlab>=4.0.0",
+    "Pillow>=10.0.0",
+
     # Type Checking
     "mypy>=1.7.0",
 ]
