@@ -15,6 +15,7 @@ import { StepCarouselSkeleton } from "@/components/custom/SkeletonComponents";
 import { AssemblyViewer } from "@/components/custom/AssemblyViewer";
 import { Breadcrumb } from "@/components/custom/Breadcrumb";
 import { exportAssemblyPdf } from "@/lib/pdf/exportAssemblyPdf";
+import { extractViewerCanvasDataUrl } from "@/lib/pdf/viewer-capture.mjs";
 
 interface AssemblyPageContentProps {
   modelId: string;
@@ -99,9 +100,15 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
   };
 
   const captureCurrentViewer = async (): Promise<string | null> => {
-    const node = geometryCaptureRef.current?.querySelector<HTMLElement>(
+    const containerNode = geometryCaptureRef.current;
+    const directCanvasCapture = extractViewerCanvasDataUrl(containerNode);
+    if (directCanvasCapture) {
+      return directCanvasCapture;
+    }
+
+    const node = containerNode?.querySelector<HTMLElement>(
       '[data-pdf-capture="geometry-surface"]'
-    ) ?? geometryCaptureRef.current;
+    ) ?? containerNode;
     if (!node) {
       return null;
     }

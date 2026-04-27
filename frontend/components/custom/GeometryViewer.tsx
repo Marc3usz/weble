@@ -373,6 +373,7 @@ export function GeometryViewer({
        const renderer = new THREE.WebGLRenderer({
          antialias: true,
          alpha: true,
+         preserveDrawingBuffer: true,
        });
        renderer.setSize(width, height);
        renderer.setPixelRatio(window.devicePixelRatio);
