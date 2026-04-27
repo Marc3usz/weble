@@ -249,6 +249,8 @@ Produce valid JSON that matches the specification exactly.
             "Do not use emoji, excitement, marketing language, or conversational filler.",
             "Keep description to one or two short operational sentences.",
             "Only include warnings or tips when they are justified by the parts or assembly context.",
+            "Respect support order: describe stable supporting parts before upper or closing parts.",
+            "Use centroid and bounding box context to keep left/right, top/bottom, front/back language spatially consistent.",
         ]
         if base_steps:
             constraints.extend(
@@ -303,9 +305,22 @@ Produce valid JSON that matches the specification exactly.
             context_lines.append(
                 f"  - Dimensions: {dims.get('width', 0):.1f}×{dims.get('height', 0):.1f}×{dims.get('depth', 0):.1f} mm"
             )
+            context_lines.append(
+                f"  - Centroid: ({part.centroid[0]:.1f}, {part.centroid[1]:.1f}, {part.centroid[2]:.1f})"
+            )
 
             # Volume
             context_lines.append(f"  - Volume: {part.volume:.1f} mm³")
+
+            bounding_box = (part.metrics or {}).get("bounding_box") if part.metrics else None
+            if bounding_box:
+                bmin = bounding_box.get("min", [0.0, 0.0, 0.0])
+                bmax = bounding_box.get("max", [0.0, 0.0, 0.0])
+                context_lines.append(
+                    f"  - Bounding box: min={tuple(round(float(v), 1) for v in bmin)}, max={tuple(round(float(v), 1) for v in bmax)}"
+                )
+
+            context_lines.append(f"  - Spatial hint: {self._infer_spatial_hint(part)}")
 
             # Quantity
             if part.quantity > 1:
@@ -320,6 +335,29 @@ Produce valid JSON that matches the specification exactly.
                     context_lines.append(f"  - Views: {views}")
 
         return "\n".join(context_lines)
+
+    def _infer_spatial_hint(self, part: Part) -> str:
+        """Create a simple spatial hint from proportions and centroid."""
+        dims = part.dimensions or {}
+        w = float(dims.get("width", 0))
+        h = float(dims.get("height", 0))
+        d = float(dims.get("depth", 0))
+        sorted_dims = sorted([w, h, d], reverse=True)
+        thickness = sorted_dims[-1] if sorted_dims else 0.0
+        span_a = sorted_dims[0] if sorted_dims else 0.0
+        span_b = sorted_dims[1] if len(sorted_dims) > 1 else 0.0
+
+        if thickness and span_a > 0 and (thickness / max(span_a, 1e-6)) < 0.08:
+            if thickness <= 4:
+                return "very thin panel; likely back or cover panel"
+            if span_a >= span_b:
+                return "wide flat panel; likely base, top, side, or shelf"
+
+        if part.part_type == PartType.FASTENER:
+            return "connector or fastening element; reference the supported joint, not free space"
+        if part.part_type == PartType.STRUCTURAL:
+            return "load-bearing or support component; usually assembled before closing panels"
+        return "general component; keep wording consistent with surrounding support parts"
 
     def _get_output_format_spec(self) -> str:
         """Get JSON output format specification."""

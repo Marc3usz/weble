@@ -235,6 +235,22 @@ class TestPromptBuilding:
         assert '"context_part_indices": [' in prompt
         assert '"step_number": 1' in prompt
 
+    @pytest.mark.asyncio
+    async def test_build_prompt_includes_spatial_context_and_support_rules(
+        self, llm_service, sample_parts, sample_drawings
+    ):
+        """Prompt should ground the model in 3D position and support-order rules."""
+        prompt = await llm_service._build_prompt(
+            sample_parts,
+            sample_drawings,
+            AssemblyTone.TECHNICAL,
+            None,
+        )
+
+        assert "centroid" in prompt.lower()
+        assert "bounding box" in prompt.lower()
+        assert "support" in prompt.lower() or "stable" in prompt.lower()
+
 
 # ============================================================================
 # API CALL TESTS (5 tests)
