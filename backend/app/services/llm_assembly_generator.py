@@ -7,7 +7,7 @@ Includes fallback to rule-based generation if LLM unavailable.
 import asyncio
 import json
 import logging
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 from pydantic import ValidationError
@@ -80,6 +80,7 @@ class LLMAssemblyGeneratorService:
         parts: List[Part],
         drawings: List[SvgDrawing],
         tone: AssemblyTone = AssemblyTone.IKEA,
+        base_steps: Optional[List[AssemblyStep]] = None,
     ) -> List[AssemblyStep]:
         """Generate assembly instructions using LLM or fallback to rules.
 
@@ -103,7 +104,7 @@ class LLMAssemblyGeneratorService:
         if settings.openrouter_api_key and settings.assembly_llm_enabled:
             try:
                 logger.info("Attempting LLM-based assembly generation...")
-                steps = await self._generate_llm_instructions(parts, drawings, tone)
+                steps = await self._generate_llm_instructions(parts, drawings, tone, base_steps)
                 logger.info(f"Successfully generated {len(steps)} steps using LLM")
                 return steps
             except LLMApiError as e:
@@ -126,6 +127,7 @@ class LLMAssemblyGeneratorService:
         parts: List[Part],
         drawings: List[SvgDrawing],
         tone: AssemblyTone,
+        base_steps: Optional[List[AssemblyStep]] = None,
     ) -> List[AssemblyStep]:
         """Generate instructions using LLM.
 
@@ -141,14 +143,14 @@ class LLMAssemblyGeneratorService:
             LLMApiError: If API call fails
         """
         # Build prompt
-        prompt = await self._build_prompt(parts, drawings, tone)
+        prompt = await self._build_prompt(parts, drawings, tone, base_steps)
         logger.debug(f"Prompt length: {len(prompt)} chars, ~{len(prompt) // 4} tokens")
 
         # Call API
         response_text = await self._call_openrouter_api(prompt)
 
         # Parse response
-        steps = await self._parse_llm_response(response_text)
+        steps = await self._parse_llm_response(response_text, base_steps)
 
         return steps
 
@@ -157,6 +159,7 @@ class LLMAssemblyGeneratorService:
         parts: List[Part],
         drawings: List[SvgDrawing],
         tone: AssemblyTone,
+        base_steps: Optional[List[AssemblyStep]] = None,
     ) -> str:
         """Build LLM prompt from parts and drawings.
 
@@ -177,6 +180,12 @@ class LLMAssemblyGeneratorService:
         # Output format specification
         output_format = self._get_output_format_spec()
 
+        # Optional predefined step skeleton
+        step_skeleton = self._build_step_skeleton_context(base_steps)
+
+        # Guardrails
+        constraints = self._get_generation_constraints(base_steps)
+
         # Few-shot examples
         examples = self._get_tone_examples(tone)
 
@@ -186,6 +195,14 @@ class LLMAssemblyGeneratorService:
 ## Assembly Context
 
 {parts_context}
+
+## Step Skeleton
+
+{step_skeleton}
+
+## Constraints
+
+{constraints}
 
 ## Output Format Specification
 
@@ -197,21 +214,60 @@ class LLMAssemblyGeneratorService:
 
 ## Your Task
 
-Generate a detailed assembly instruction sequence for the parts listed above.
+Rewrite the predefined assembly steps into precise technical instructions for the parts listed above.
 Produce valid JSON that matches the specification exactly.
 """
         return prompt
 
+    def _build_step_skeleton_context(self, base_steps: Optional[List[AssemblyStep]]) -> str:
+        """Serialize predefined steps for constrained enrichment."""
+        if not base_steps:
+            return "No predefined step skeleton was provided. Infer a practical sequence from the parts list."
+
+        skeleton: List[Dict[str, Any]] = []
+        for step in base_steps:
+            skeleton.append(
+                {
+                    "step_number": step.step_number,
+                    "title": step.title,
+                    "part_indices": step.part_indices,
+                    "context_part_indices": step.context_part_indices,
+                    "part_roles": {str(key): value for key, value in step.part_roles.items()},
+                    "duration_minutes": step.duration_minutes,
+                }
+            )
+
+        return json.dumps({"steps": skeleton}, indent=2)
+
+    def _get_generation_constraints(self, base_steps: Optional[List[AssemblyStep]]) -> str:
+        """Return hard constraints that reduce hallucinations."""
+        constraints = [
+            "Use a technical and concise tone.",
+            "Do not mention tools, fasteners, fittings, tolerances, or measurements unless they are present in the provided data.",
+            "Do not use emoji, excitement, marketing language, or conversational filler.",
+            "Keep description to one or two short operational sentences.",
+            "Only include warnings or tips when they are justified by the parts or assembly context.",
+        ]
+        if base_steps:
+            constraints.extend(
+                [
+                    "Do not change step_number.",
+                    "Do not change part_indices.",
+                    "Do not change context_part_indices.",
+                    "Keep the same number of steps as the predefined skeleton.",
+                ]
+            )
+        return "\n".join(f"- {item}" for item in constraints)
+
     def _get_system_message(self, tone: AssemblyTone) -> str:
         """Get system message for tone."""
         if tone == AssemblyTone.IKEA:
-            return """You are an expert IKEA instruction writer. Create assembly instructions that are:
-- Cheerful and encouraging ("this is fun!", "easy next steps!")
-- Use simple, accessible language
-- Include practical tips for alignment and fitting
-- Make the process feel achievable for anyone
-- Use positive, friendly tone throughout
-- Include emoji and icons where appropriate (👍, ✓, →, ⚠️)"""
+            return """You are an expert technical assembly writer. Create assembly instructions that are:
+- Concise and operational
+- Grounded in the provided assembly data only
+- Focused on alignment, fit, order, and fastening accuracy
+- Free of marketing language, emoji, and unnecessary encouragement
+- Suitable for a manufacturing or workshop assembly sheet"""
 
         elif tone == AssemblyTone.TECHNICAL:
             return """You are a technical documentation expert. Create assembly instructions that are:
@@ -222,13 +278,11 @@ Produce valid JSON that matches the specification exactly.
 - Suitable for engineers and technical users"""
 
         else:  # BEGINNER
-            return """You are a patient instructor for beginners. Create assembly instructions that are:
-- Extremely detailed and step-by-step
-- Include safety warnings and cautions
-- Anticipate common mistakes
-- Provide extra guidance at each step
-- Use very simple language
-- Include helpful tips for success"""
+            return """You are a careful technical instructor. Create assembly instructions that are:
+- Detailed and step-by-step
+- Focused on alignment, safety, and common mistakes
+- Written in simple but still technical language
+- Free of filler, hype, and invented details"""
 
     async def _build_parts_context(
         self,
@@ -405,7 +459,11 @@ Produce valid JSON that matches the specification exactly.
         except json.JSONDecodeError as e:
             raise LLMApiError(500, f"Invalid JSON response: {e}")
 
-    async def _parse_llm_response(self, response_text: str) -> List[AssemblyStep]:
+    async def _parse_llm_response(
+        self,
+        response_text: str,
+        expected_steps: Optional[List[AssemblyStep]] = None,
+    ) -> List[AssemblyStep]:
         """Parse LLM response into AssemblyStep objects.
 
         Args:
@@ -432,7 +490,7 @@ Produce valid JSON that matches the specification exactly.
 
             # Extract steps
             if "steps" not in response_data:
-                raise ValidationError("Response missing 'steps' field")
+                self._raise_validation_error("Response missing 'steps' field")
 
             steps = []
             for step_data in response_data["steps"]:
@@ -440,12 +498,66 @@ Produce valid JSON that matches the specification exactly.
                 steps.append(step)
 
             if not steps:
-                raise ValidationError("Response contains no steps")
+                self._raise_validation_error("Response contains no steps")
+
+            self._validate_enriched_steps(steps, expected_steps)
 
             return steps
 
         except json.JSONDecodeError as e:
-            raise ValidationError(f"Invalid JSON in response: {e}")
+            self._raise_validation_error(f"Invalid JSON in response: {e}")
+
+    def _validate_enriched_steps(
+        self,
+        steps: List[AssemblyStep],
+        expected_steps: Optional[List[AssemblyStep]],
+    ) -> None:
+        """Validate that enriched steps preserve the predefined topology."""
+        if not expected_steps:
+            return
+
+        if len(steps) != len(expected_steps):
+            self._raise_validation_error("LLM response changed the number of assembly steps")
+
+        for actual, expected in zip(steps, expected_steps):
+            if actual.step_number != expected.step_number:
+                self._raise_validation_error(
+                    f"LLM response changed step_number for step {expected.step_number}"
+                )
+            if actual.part_indices != expected.part_indices:
+                self._raise_validation_error(
+                    f"LLM response changed part_indices for step {expected.step_number}"
+                )
+            if actual.context_part_indices != expected.context_part_indices:
+                self._raise_validation_error(
+                    f"LLM response changed context_part_indices for step {expected.step_number}"
+                )
+            if not actual.description.strip() or len(actual.description.strip()) < 10:
+                self._raise_validation_error(
+                    f"LLM response returned an incomplete description for step {expected.step_number}"
+                )
+            if any(
+                token in actual.description.lower()
+                for token in ["thing", "stuff", "component together"]
+            ):
+                self._raise_validation_error(
+                    f"LLM response returned generic wording for step {expected.step_number}"
+                )
+
+    def _raise_validation_error(self, message: str) -> None:
+        """Raise a pydantic validation error with a simple message."""
+        raise ValidationError.from_exception_data(
+            "LLMAssemblyResponse",
+            [
+                {
+                    "type": "value_error",
+                    "loc": ("steps",),
+                    "msg": message,
+                    "input": None,
+                    "ctx": {"error": ValueError(message)},
+                }
+            ],
+        )
 
     def _create_assembly_step_from_llm(self, step_data: dict) -> AssemblyStep:
         """Create AssemblyStep from LLM response data.
@@ -614,10 +726,10 @@ Produce valid JSON that matches the specification exactly.
         """Get tone-appropriate text for a key."""
         tone_map = {
             AssemblyTone.IKEA: {
-                "assemble_structure": "Build the main structure (fun part!)",
-                "install_panels": "Snap on the panels",
-                "attach_hardware": "Add the hardware pieces",
-                "fasten": "Secure everything with fasteners",
+                "assemble_structure": "Assemble the main structure",
+                "install_panels": "Install the panels",
+                "attach_hardware": "Install the hardware",
+                "fasten": "Secure the assembly with fasteners",
             },
             AssemblyTone.TECHNICAL: {
                 "assemble_structure": "Assemble structural components",
@@ -637,7 +749,7 @@ Produce valid JSON that matches the specification exactly.
     def _get_tone_detail(self, tone: AssemblyTone, action: str) -> str:
         """Get tone-appropriate detail description."""
         if tone == AssemblyTone.IKEA:
-            return f"Let's {action}. This is the fun part! Take your time and enjoy the process."
+            return f"{action.capitalize()}. Verify alignment and seating before proceeding to the next connection."
         elif tone == AssemblyTone.TECHNICAL:
             return (
                 f"Proceed to {action}. Ensure all components are properly positioned and secured."
@@ -649,24 +761,28 @@ Produce valid JSON that matches the specification exactly.
         """Get tone-appropriate warnings."""
         warnings_map = {
             "structural": {
-                AssemblyTone.IKEA: ["Make sure components are snapped securely"],
+                AssemblyTone.IKEA: [
+                    "Confirm that all structural faces sit flush before securing the joint."
+                ],
                 AssemblyTone.TECHNICAL: ["Ensure orthogonal alignment"],
                 AssemblyTone.BEGINNER: [
                     "Be very careful the parts are aligned before you push them together"
                 ],
             },
             "panel": {
-                AssemblyTone.IKEA: ["Panels should click into place"],
+                AssemblyTone.IKEA: ["Support the panel fully while seating it into position."],
                 AssemblyTone.TECHNICAL: ["Verify panel flatness and alignment"],
                 AssemblyTone.BEGINNER: ["Be gentle with the panels - they're delicate"],
             },
             "hardware": {
-                AssemblyTone.IKEA: ["Hardware keeps things stable"],
+                AssemblyTone.IKEA: [
+                    "Check that each hardware item is fully seated before loading the joint."
+                ],
                 AssemblyTone.TECHNICAL: ["Ensure hardware components are properly seated"],
                 AssemblyTone.BEGINNER: ["Make sure hardware pieces are sitting correctly"],
             },
             "fastener": {
-                AssemblyTone.IKEA: ["Don't over-tighten fasteners"],
+                AssemblyTone.IKEA: ["Do not over-tighten the fasteners."],
                 AssemblyTone.TECHNICAL: ["Tighten to specification - do not exceed torque limits"],
                 AssemblyTone.BEGINNER: [
                     "WARNING: Don't make them too tight or you might strip them"
@@ -680,8 +796,8 @@ Produce valid JSON that matches the specification exactly.
         tips_map = {
             "alignment": {
                 AssemblyTone.IKEA: [
-                    "Use a flat surface to check alignment",
-                    "Take a step back and admire your work!",
+                    "Use a flat reference surface to confirm alignment.",
+                    "Check both edges before tightening the joint fully.",
                 ],
                 AssemblyTone.TECHNICAL: [
                     "Use measuring instruments for precision",
@@ -693,17 +809,21 @@ Produce valid JSON that matches the specification exactly.
                 ],
             },
             "careful_handling": {
-                AssemblyTone.IKEA: ["Panels are sturdy but deserve care"],
+                AssemblyTone.IKEA: [
+                    "Support large panel faces to avoid edge damage during positioning."
+                ],
                 AssemblyTone.TECHNICAL: ["Handle with care to avoid damage"],
                 AssemblyTone.BEGINNER: ["Be very gentle - if you drop it, it could break"],
             },
             "secure": {
-                AssemblyTone.IKEA: ["Make sure everything feels solid"],
+                AssemblyTone.IKEA: [
+                    "Verify that the joint is seated before applying final tightening."
+                ],
                 AssemblyTone.TECHNICAL: ["Verify all components are securely seated"],
                 AssemblyTone.BEGINNER: ["Give everything a gentle tug - nothing should wiggle"],
             },
             "not_too_tight": {
-                AssemblyTone.IKEA: ["Snug, not super tight"],
+                AssemblyTone.IKEA: ["Tighten until seated, then stop once resistance increases."],
                 AssemblyTone.TECHNICAL: ["Tighten sufficiently but avoid over-tightening"],
                 AssemblyTone.BEGINNER: ["When something feels snug, stop - don't keep turning"],
             },

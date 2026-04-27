@@ -86,11 +86,13 @@ class AssemblyGeneratorService(PipelineStage):
         if preview_only:
             return await self._generate_preview_steps(parts, drawings)
 
+        base_steps = await self._generate_rules_based_steps(parts, drawings, tone)
+
         # Try LLM if enabled and available
         if settings.assembly_llm_enabled and self.llm_service:
             try:
                 self.logger.debug("Attempting LLM-based assembly generation...")
-                steps = await self.llm_service.process(parts, drawings, tone)
+                steps = await self.llm_service.process(parts, drawings, tone, base_steps)
                 # Add exploded views to each step
                 from app.services.exploded_view_generator import ExplodedViewSVGGenerator
 
@@ -108,7 +110,7 @@ class AssemblyGeneratorService(PipelineStage):
                 # Fall through to rules-based generation
 
         # Rule-based fallback
-        steps = await self._generate_rules_based_steps(parts, drawings, tone)
+        steps = base_steps
 
         # Add exploded views
         try:
@@ -284,11 +286,17 @@ class AssemblyGeneratorService(PipelineStage):
                             step_number=current_step,
                             title=conn_title,
                             description=self._build_step_description(parts, conn_active, conn_desc),
-                            detail_description=self._build_step_detail(parts, conn_active, conn_detail),
+                            detail_description=self._build_step_detail(
+                                parts, conn_active, conn_detail
+                            ),
                             part_indices=conn_active,
                             part_roles=conn_roles,
                             context_part_indices=frame_context.copy(),
-                            assembly_sequence=["Locate holes", "Insert connector", "Tighten lightly"],
+                            assembly_sequence=[
+                                "Locate holes",
+                                "Insert connector",
+                                "Tighten lightly",
+                            ],
                             warnings=self._get_step_warnings(tone, "hardware"),
                             tips=self._get_step_tips(tone, "hardware"),
                             svg_diagram=self._simple_step_svg("Hardware", conn_active),
@@ -301,14 +309,18 @@ class AssemblyGeneratorService(PipelineStage):
                     current_step += 1
 
         # Remaining connectors not yet consumed
-        consumed_connectors = {idx for step in steps for idx in step.part_indices if idx in connector_indices}
+        consumed_connectors = {
+            idx for step in steps for idx in step.part_indices if idx in connector_indices
+        }
         remaining_connectors = [idx for idx in connector_indices if idx not in consumed_connectors]
         if remaining_connectors:
             title, desc, detail = self._get_step_text(tone, "hardware")
             active_roles = {
                 idx: self._role_for_part(parts[idx], "connector") for idx in remaining_connectors
             }
-            context = frame_indices + [idx for idx in connector_indices if idx in consumed_connectors]
+            context = frame_indices + [
+                idx for idx in connector_indices if idx in consumed_connectors
+            ]
             steps.append(
                 AssemblyStep(
                     step_number=current_step,
@@ -395,9 +407,9 @@ class AssemblyGeneratorService(PipelineStage):
         text_map = {
             "frame": {
                 AssemblyTone.IKEA: (
-                    "Build the main frame (fun part!)",
+                    "Assemble the main frame",
                     "Assemble the primary frame components",
-                    "Let's build the main structure! Align the frame pieces and secure them together. You're doing great!",
+                    "Align the frame pieces, verify edge contact, and secure the joints in the shown order.",
                 ),
                 AssemblyTone.TECHNICAL: (
                     "Assemble structural frame",
@@ -412,9 +424,9 @@ class AssemblyGeneratorService(PipelineStage):
             },
             "hardware": {
                 AssemblyTone.IKEA: (
-                    "Snap on the hardware",
+                    "Install the hardware",
                     "Install hardware components to secure the frame",
-                    "Now for the fun part - let's make sure everything stays together!",
+                    "Seat each hardware item fully, then tighten only after the connected parts remain aligned.",
                 ),
                 AssemblyTone.TECHNICAL: (
                     "Install fastening hardware",
@@ -429,9 +441,9 @@ class AssemblyGeneratorService(PipelineStage):
             },
             "remaining": {
                 AssemblyTone.IKEA: (
-                    "Add the finishing touches",
+                    "Install the remaining components",
                     "Attach the remaining components",
-                    "Almost done! Let's add these final pieces to complete your assembly.",
+                    "Install the remaining components and verify that the previous joints stay seated during final positioning.",
                 ),
                 AssemblyTone.TECHNICAL: (
                     "Install remaining components",
@@ -451,21 +463,25 @@ class AssemblyGeneratorService(PipelineStage):
         """Get tone-appropriate warnings for a step."""
         warnings_map = {
             "frame": {
-                AssemblyTone.IKEA: ["Make sure everything clicks securely"],
+                AssemblyTone.IKEA: [
+                    "Verify that each frame joint is fully seated before moving to the next connection."
+                ],
                 AssemblyTone.TECHNICAL: ["Verify alignment and secure all joints"],
                 AssemblyTone.BEGINNER: [
                     "Be very careful to align pieces before pushing them together"
                 ],
             },
             "hardware": {
-                AssemblyTone.IKEA: ["Don't over-tighten - snug is enough"],
+                AssemblyTone.IKEA: ["Do not over-tighten the hardware during initial seating."],
                 AssemblyTone.TECHNICAL: ["Do not exceed specified torque limits"],
                 AssemblyTone.BEGINNER: [
                     "WARNING: Don't make them too tight or you might break something"
                 ],
             },
             "remaining": {
-                AssemblyTone.IKEA: ["Final check - everything should be solid"],
+                AssemblyTone.IKEA: [
+                    "Perform a final seating check after the last component is installed."
+                ],
                 AssemblyTone.TECHNICAL: ["Verify all components are properly seated"],
                 AssemblyTone.BEGINNER: [
                     "Give everything a gentle tug to check - nothing should wiggle"
@@ -478,17 +494,23 @@ class AssemblyGeneratorService(PipelineStage):
         """Get tone-appropriate tips for a step."""
         tips_map = {
             "frame": {
-                AssemblyTone.IKEA: ["Use a flat surface to check alignment"],
+                AssemblyTone.IKEA: [
+                    "Use a flat reference surface to confirm alignment before tightening."
+                ],
                 AssemblyTone.TECHNICAL: ["Use measuring instruments to verify alignment"],
                 AssemblyTone.BEGINNER: ["It really helps to lay everything on a flat table"],
             },
             "hardware": {
-                AssemblyTone.IKEA: ["Make sure each piece feels solid"],
+                AssemblyTone.IKEA: [
+                    "Tighten hardware in stages if several fasteners secure the same joint."
+                ],
                 AssemblyTone.TECHNICAL: ["Apply fasteners in a cross pattern if multiple"],
                 AssemblyTone.BEGINNER: ["When something feels snug, stop - don't keep turning"],
             },
             "remaining": {
-                AssemblyTone.IKEA: ["You're almost there!"],
+                AssemblyTone.IKEA: [
+                    "Check the final assembly against the previous step before closing the sequence."
+                ],
                 AssemblyTone.TECHNICAL: ["Document final assembly state for reference"],
                 AssemblyTone.BEGINNER: ["You've got this! Just a few more pieces!"],
             },
@@ -514,7 +536,9 @@ class AssemblyGeneratorService(PipelineStage):
             return base
         return f"{base} {'; '.join(details)}."
 
-    def _compose_step_svg_from_drawings(self, step: AssemblyStep, drawings: List[SvgDrawing]) -> str:
+    def _compose_step_svg_from_drawings(
+        self, step: AssemblyStep, drawings: List[SvgDrawing]
+    ) -> str:
         active = step.part_indices[:4]
         if not active:
             return self._simple_step_svg(step.title, step.part_indices)
@@ -540,7 +564,9 @@ class AssemblyGeneratorService(PipelineStage):
             y = 34 + pad + (i // cols) * (card_h + pad)
             part_svg = drawings[idx].svg_content
             data_uri = f"data:image/svg+xml;utf8,{quote(part_svg)}"
-            svg.append(f"<rect x='{x}' y='{y}' width='{card_w}' height='{card_h}' fill='#fafafa' stroke='#bbb'/>")
+            svg.append(
+                f"<rect x='{x}' y='{y}' width='{card_w}' height='{card_h}' fill='#fafafa' stroke='#bbb'/>"
+            )
             svg.append(
                 f"<image href=\"{data_uri}\" x='{x + 4}' y='{y + 4}' width='{card_w - 8}' height='{card_h - 8}' preserveAspectRatio='xMidYMid meet' />"
             )

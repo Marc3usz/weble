@@ -113,6 +113,30 @@ class TestAssemblyGeneratorRulesBased:
         assert all(isinstance(step, AssemblyStep) for step in result)
 
     @pytest.mark.asyncio
+    async def test_rules_based_ikea_tone_stays_technical_and_plain(
+        self, assembly_generator_no_llm, sample_parts, sample_drawings
+    ):
+        """Even friendly tone should avoid fluff in assembly copy."""
+        result = await assembly_generator_no_llm.process(
+            sample_parts, sample_drawings, tone=AssemblyTone.IKEA
+        )
+
+        assert result
+        combined_text = " ".join(
+            filter(
+                None,
+                [
+                    step.title + " " + step.description + " " + step.detail_description
+                    for step in result
+                ],
+            )
+        ).lower()
+        assert "fun part" not in combined_text
+        assert "enjoy the process" not in combined_text
+        assert "super easy" not in combined_text
+        assert "👍" not in combined_text
+
+    @pytest.mark.asyncio
     async def test_rules_based_technical_tone(
         self, assembly_generator_no_llm, sample_parts, sample_drawings
     ):

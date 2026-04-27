@@ -84,7 +84,7 @@ class Settings(BaseSettings):
 
     # Phase 3: Assembly Instructions
     assembly_llm_enabled: bool = True
-    assembly_tone: AssemblyTone = AssemblyTone.IKEA
+    assembly_tone: AssemblyTone = AssemblyTone.TECHNICAL
     assembly_llm_model: str = "openai/gpt-4.1"  # Higher-quality assembly reasoning
 
     # SSE (Server-Sent Events)

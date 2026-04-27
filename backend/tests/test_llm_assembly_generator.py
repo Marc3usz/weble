@@ -5,6 +5,8 @@ import pytest_asyncio
 from unittest.mock import AsyncMock, Mock, patch, MagicMock
 import json
 
+from pydantic import ValidationError
+
 from app.services.llm_assembly_generator import LLMAssemblyGeneratorService
 from app.models.schemas import Part, PartType, SvgDrawing, AssemblyStep
 from app.core.config import AssemblyTone
@@ -160,10 +162,10 @@ class TestPromptBuilding:
     """Test prompt generation for different tones."""
 
     def test_build_system_prompt_ikea(self, llm_service):
-        """Test IKEA tone system prompt is cheerful and simple."""
+        """Test IKEA tone prompt stays constrained and technical."""
         prompt = llm_service._build_system_prompt(AssemblyTone.IKEA)
-        assert "cheerful" in prompt.lower() or "fun" in prompt.lower()
-        assert "emoji" in prompt.lower() or "icon" in prompt.lower()
+        assert "technical" in prompt.lower() or "operational" in prompt.lower()
+        assert "emoji" in prompt.lower() or "marketing" in prompt.lower()
         assert isinstance(prompt, str)
         assert len(prompt) > 100
 
@@ -198,6 +200,40 @@ class TestPromptBuilding:
         assert "50" in prompt or "width" in prompt.lower()
         assert "30" in prompt or "height" in prompt.lower()
         assert isinstance(prompt, str)
+
+    @pytest.mark.asyncio
+    async def test_build_prompt_includes_step_skeleton_constraints(
+        self, llm_service, sample_parts, sample_drawings
+    ):
+        """Prompt should constrain the model to the predefined step skeleton."""
+        skeleton_steps = [
+            AssemblyStep(
+                step_number=1,
+                title="Base skeleton",
+                description="",
+                detail_description="",
+                part_indices=[0, 1],
+                part_roles={0: "panel", 1: "fastener"},
+                context_part_indices=[2],
+                assembly_sequence=[],
+                warnings=[],
+                tips=[],
+                duration_minutes=3,
+                is_llm_generated=False,
+            )
+        ]
+
+        prompt = await llm_service._build_prompt(
+            sample_parts,
+            sample_drawings,
+            AssemblyTone.TECHNICAL,
+            skeleton_steps,
+        )
+
+        assert "do not change part_indices" in prompt.lower()
+        assert '"part_indices": [' in prompt
+        assert '"context_part_indices": [' in prompt
+        assert '"step_number": 1' in prompt
 
 
 # ============================================================================
@@ -327,6 +363,93 @@ class TestResponseParsing:
         invalid_response = "This is not valid JSON"
         with pytest.raises(Exception):
             llm_service._parse_response(invalid_response)
+
+    @pytest.mark.asyncio
+    async def test_parse_llm_response_rejects_changed_part_indices(self, llm_service):
+        """LLM output should be rejected when it changes the predefined parts."""
+        response_text = json.dumps(
+            {
+                "steps": [
+                    {
+                        "step_number": 1,
+                        "title": "Secure panel",
+                        "description": "Align the panel and secure it.",
+                        "detail_description": "Align the panel to the bracket and tighten the fastener.",
+                        "part_indices": [2],
+                        "part_roles": {"2": "bracket"},
+                        "context_part_indices": [1],
+                        "assembly_sequence": ["Align", "Secure"],
+                        "warnings": [],
+                        "tips": [],
+                        "duration_minutes": 4,
+                    }
+                ]
+            }
+        )
+        expected_steps = [
+            AssemblyStep(
+                step_number=1,
+                title="Skeleton",
+                description="",
+                detail_description="",
+                part_indices=[0, 1],
+                part_roles={0: "panel", 1: "fastener"},
+                context_part_indices=[2],
+                assembly_sequence=[],
+                warnings=[],
+                tips=[],
+                duration_minutes=3,
+                is_llm_generated=False,
+            )
+        ]
+
+        with pytest.raises(ValidationError):
+            await llm_service._parse_llm_response(response_text, expected_steps)
+
+    @pytest.mark.asyncio
+    async def test_parse_llm_response_preserves_expected_indices(self, llm_service):
+        """Valid LLM output should keep the predefined step topology."""
+        response_text = json.dumps(
+            {
+                "steps": [
+                    {
+                        "step_number": 1,
+                        "title": "Secure side panel",
+                        "description": "Align panel A with bracket C and insert fastener B.",
+                        "detail_description": "Keep the panel edge flush with the bracket face, then seat the fastener without over-tightening.",
+                        "part_indices": [0, 1],
+                        "part_roles": {"0": "side panel", "1": "fastener"},
+                        "context_part_indices": [2],
+                        "assembly_sequence": ["Align panel", "Insert fastener", "Tighten"],
+                        "warnings": ["Keep the bracket square during tightening."],
+                        "tips": ["Check that the panel edge stays flush before tightening fully."],
+                        "duration_minutes": 4,
+                    }
+                ]
+            }
+        )
+        expected_steps = [
+            AssemblyStep(
+                step_number=1,
+                title="Skeleton",
+                description="",
+                detail_description="",
+                part_indices=[0, 1],
+                part_roles={0: "panel", 1: "fastener"},
+                context_part_indices=[2],
+                assembly_sequence=[],
+                warnings=[],
+                tips=[],
+                duration_minutes=3,
+                is_llm_generated=False,
+            )
+        ]
+
+        steps = await llm_service._parse_llm_response(response_text, expected_steps)
+
+        assert steps[0].part_indices == [0, 1]
+        assert steps[0].context_part_indices == [2]
+        assert steps[0].title == "Secure side panel"
 
 
 # ============================================================================
