@@ -660,6 +660,7 @@ export function GeometryViewer({
     <div className="relative w-full">
       <div
         ref={containerRef}
+        data-pdf-capture="geometry-surface"
         className="w-full rounded-3xl bg-bright_snow-600 overflow-hidden"
         style={{ 
           aspectRatio: "4 / 3",

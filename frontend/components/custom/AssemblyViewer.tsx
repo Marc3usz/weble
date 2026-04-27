@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { GeometryViewer } from "./GeometryViewer";
 import { SvgViewer } from "./SvgViewer";
 import { AssemblyStep } from "@/types";
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { RefObject } from "react";
 
 interface AssemblyViewerProps {
   modelId: string;
@@ -17,7 +18,7 @@ interface AssemblyViewerProps {
   onNextStep: () => void;
   currentPartIndex?: number;
   onSelectPartIndex?: (partIndex: number) => void;
-  isLoading?: boolean;
+  geometryCaptureRef?: RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -45,7 +46,7 @@ export function AssemblyViewer({
   onNextStep,
   currentPartIndex,
   onSelectPartIndex,
-  isLoading = false,
+  geometryCaptureRef,
 }: AssemblyViewerProps) {
   const currentStep = steps[currentStepIndex];
 
@@ -61,7 +62,7 @@ export function AssemblyViewer({
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 h-full max-h-[calc(100vh-15rem)] min-h-[560px]">
       {/* Left: 3D Viewer (60% width) */}
-      <div className="xl:col-span-2 min-h-0">
+      <div ref={geometryCaptureRef} className="xl:col-span-2 min-h-0">
         <GeometryViewer
           modelId={modelId}
           selectedPartId={activePartIndex}
@@ -121,8 +122,8 @@ export function AssemblyViewer({
                 <div className="mt-4 space-y-2">
                   <p className="text-xs font-medium text-charcoal-600 uppercase">Sekwencja</p>
                   <ol className="text-xs text-charcoal-700 space-y-1 list-decimal pl-4">
-                    {currentStep.assembly_sequence.map((item, idx) => (
-                      <li key={`${item}-${idx}`}>{item}</li>
+                    {currentStep.assembly_sequence.map((item) => (
+                      <li key={`sequence-${currentStep.step_number}-${item}`}>{item}</li>
                     ))}
                   </ol>
                 </div>
@@ -132,8 +133,8 @@ export function AssemblyViewer({
                 <div className="mt-4 space-y-2">
                   <p className="text-xs font-medium text-charcoal-600 uppercase">Uwagi</p>
                   <ul className="text-xs text-charcoal-700 space-y-1 list-disc pl-4">
-                    {currentStep.warnings.map((item, idx) => (
-                      <li key={`${item}-${idx}`}>{item}</li>
+                    {currentStep.warnings.map((item) => (
+                      <li key={`warning-${currentStep.step_number}-${item}`}>{item}</li>
                     ))}
                   </ul>
                 </div>
@@ -143,8 +144,8 @@ export function AssemblyViewer({
                 <div className="mt-4 space-y-2">
                   <p className="text-xs font-medium text-charcoal-600 uppercase">Wskazówki</p>
                   <ul className="text-xs text-charcoal-700 space-y-1 list-disc pl-4">
-                    {currentStep.tips.map((item, idx) => (
-                      <li key={`${item}-${idx}`}>{item}</li>
+                    {currentStep.tips.map((item) => (
+                      <li key={`tip-${currentStep.step_number}-${item}`}>{item}</li>
                     ))}
                   </ul>
                 </div>
