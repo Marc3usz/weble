@@ -343,7 +343,7 @@ export function GeometryViewer({
 
        // Scene setup
        const scene = new THREE.Scene();
-       scene.background = new THREE.Color(0xf8faf9); // Bright snow 700 background
+        scene.background = new THREE.Color(0x1a1a1a); // Black 500 background
 
        // Camera setup
        const perspectiveCamera = new THREE.PerspectiveCamera(
@@ -636,40 +636,40 @@ export function GeometryViewer({
       });
     }, [explosionValue]);
 
-  if (error) {
-    return (
-      <div className="w-full rounded-3xl bg-red-50 p-6 flex items-center justify-center"
-        style={{ aspectRatio: "4 / 3" }}>
-        <div className="text-center">
-          <p className="text-red-700 font-semibold">Błąd przy ładowaniu modelu 3D</p>
-          <p className="text-red-600 text-sm mt-2">{error}</p>
-        </div>
-      </div>
-    );
-  }
+   if (error) {
+     return (
+       <div className="w-full rounded-3xl bg-red-50 p-6 flex items-center justify-center"
+         style={{ aspectRatio: "4 / 3" }}>
+         <div className="text-center">
+           <p className="text-red-700 font-semibold">Błąd przy ładowaniu modelu 3D</p>
+           <p className="text-red-600 text-sm mt-2">{error}</p>
+         </div>
+       </div>
+     );
+   }
 
-  if (isLoading) {
-    return (
-      <div className="w-full rounded-3xl bg-bright_snow-600 overflow-hidden"
-        style={{ aspectRatio: "4 / 3" }}>
-        <Skeleton className="w-full h-full" />
-      </div>
-    );
-  }
+   if (isLoading) {
+     return (
+       <div className="w-full rounded-3xl bg-black-600 overflow-hidden"
+         style={{ aspectRatio: "4 / 3" }}>
+         <Skeleton className="w-full h-full" />
+       </div>
+     );
+   }
 
   return (
     <div className="relative w-full">
       <div
-        ref={containerRef}
-        data-pdf-capture="geometry-surface"
-        className="w-full rounded-3xl bg-bright_snow-600 overflow-hidden"
-        style={{ 
-          aspectRatio: "4 / 3",
-          minHeight: "280px",
-        }}
-      />
+         ref={containerRef}
+         data-pdf-capture="geometry-surface"
+         className="w-full rounded-3xl bg-black-600 overflow-hidden"
+         style={{ 
+           aspectRatio: "4 / 3",
+           minHeight: "280px",
+         }}
+       />
 
-      <div className="absolute top-3 right-3 z-30 max-w-[360px] rounded-xl bg-carbon_black-DEFAULT/75 text-bright_snow-900 px-3 py-2 text-xs leading-tight backdrop-blur-sm">
+       <div className="absolute top-3 right-3 z-30 max-w-[360px] rounded-xl bg-black-DEFAULT/75 text-gold-200 px-3 py-2 text-xs leading-tight backdrop-blur-sm">
         <p>Obróć: przeciągnij | Przesuń: shift+przeciągnij | Powiększ: scroll | Reset: 2x klik</p>
         <div className="mt-2 flex items-center gap-2">
           <span className="text-[11px]">Tryb obrotu:</span>

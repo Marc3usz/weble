@@ -36,10 +36,10 @@ export function ProgressCardsSkeleton({ count = 3 }: ProgressCardSkeletonProps) 
   return (
     <div className="space-y-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-3xl p-6 bg-bright_snow-600 border border-lilac_ash-200 space-y-3"
-        >
+         <div
+           key={i}
+           className="rounded-3xl p-6 bg-black-600 border border-gold-400 space-y-3"
+         >
           <div className="flex items-center gap-3">
             <Skeleton className="w-6 h-6 rounded-full animate-pulse" />
             <Skeleton className="w-32 h-4 rounded-full animate-pulse" />
@@ -51,11 +51,11 @@ export function ProgressCardsSkeleton({ count = 3 }: ProgressCardSkeletonProps) 
   );
 }
 
-export function GeometryViewerSkeleton() {
-  return (
-    <div className="w-full rounded-3xl bg-bright_snow-600 border border-lilac_ash-200 aspect-square animate-pulse" />
-  );
-}
+  export function GeometryViewerSkeleton() {
+    return (
+      <div className="w-full rounded-3xl bg-black-600 border border-gold-400 aspect-square animate-pulse" />
+    );
+  }
 
 export function StepCarouselSkeleton() {
   return (
@@ -78,10 +78,10 @@ export function PartGridSkeleton() {
   return (
     <div className="grid grid-cols-3 gap-6">
       {Array.from({ length: 9 }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-3xl p-6 bg-bright_snow-600 border border-lilac_ash-200 space-y-4"
-        >
+         <div
+           key={i}
+           className="rounded-3xl p-6 bg-black-600 border border-gold-400 space-y-4"
+         >
           <Skeleton className="w-full h-24 rounded-2xl animate-pulse" />
           <Skeleton className="w-full h-4 rounded-full animate-pulse" />
           <Skeleton className="w-2/3 h-3 rounded-full animate-pulse" />

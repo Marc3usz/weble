@@ -16,12 +16,12 @@ interface ExplosionControlProps {
  */
 export function ExplosionControl({ value, onChange }: ExplosionControlProps) {
   return (
-    <div className="w-full space-y-2 px-3 py-3 bg-lilac_ash-300/95 backdrop-blur-sm rounded-2xl shadow-md">
+    <div className="w-full space-y-2 px-3 py-3 bg-gold-300/95 backdrop-blur-sm rounded-2xl shadow-md">
       <div className="flex items-center justify-between">
-        <label htmlFor="explosion-slider" className="text-xs font-semibold text-charcoal-700">
+         <label htmlFor="explosion-slider" className="text-xs font-semibold text-black-700">
           Rozłożenie części
         </label>
-        <span className="text-xs text-charcoal-700 bg-lilac_ash-100 px-2 py-0.5 rounded-xl">
+         <span className="text-xs text-black-700 bg-gold-100 px-2 py-0.5 rounded-xl">
           {value}%
         </span>
       </div>
@@ -38,7 +38,7 @@ export function ExplosionControl({ value, onChange }: ExplosionControlProps) {
       />
 
       {/* Hint Text */}
-      <p className="text-[11px] text-charcoal-600">
+       <p className="text-[11px] text-black-600">
         Przeciągnij suwak aby rozsunąć części
       </p>
     </div>

@@ -170,7 +170,7 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
   };
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen px-4 py-4 bg-gradient-to-br from-bright_snow-900 via-bright_snow-700 to-lilac_ash-800">
+    <main className="flex-1 flex flex-col min-h-screen px-4 py-4 bg-gradient-to-br from-black-500 via-black-400 to-black-600">
       <div className="w-full max-w-7xl mx-auto space-y-4 flex-1">
         {/* Breadcrumb Navigation */}
         <Breadcrumb 
@@ -182,7 +182,7 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
           actions={
             <>
               <Link href={`/parts/${modelId}`}>
-                <Button className="h-9 px-4 bg-lilac_ash-600 hover:bg-lilac_ash-700 text-bright_snow-900 font-semibold rounded-2xl transition-colors">
+                <Button className="h-9 px-4 bg-gold-600 hover:bg-gold-700 text-black-900 font-semibold rounded-2xl transition-colors">
                   📦 Części
                 </Button>
               </Link>
@@ -190,7 +190,7 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
               <Button
                 onClick={handlePreviousStep}
                 disabled={!steps || currentStep === 0 || isExportingPdf}
-                className="h-9 px-3 bg-lilac_ash-300 hover:bg-lilac_ash-400 text-charcoal-700 rounded-2xl disabled:opacity-50"
+                className="h-9 px-3 bg-gold-300 hover:bg-gold-400 text-black-700 rounded-2xl disabled:opacity-50"
               >
                 ←
               </Button>
@@ -198,7 +198,7 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
               <Button
                 onClick={handleNextStep}
                 disabled={!steps || steps.length === 0 || currentStep >= steps.length - 1 || isExportingPdf}
-                className="h-9 px-3 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 rounded-2xl disabled:opacity-50"
+                className="h-9 px-3 bg-gold-500 hover:bg-gold-600 text-black-900 rounded-2xl disabled:opacity-50"
               >
                 →
               </Button>
@@ -206,7 +206,7 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
               <Button
                 onClick={handleExportSingleStep}
                 disabled={!steps || steps.length === 0 || isExportingPdf}
-                className="h-9 px-4 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-2xl transition-colors"
+                className="h-9 px-4 bg-gold-500 hover:bg-gold-600 text-black-900 font-semibold rounded-2xl transition-colors"
               >
                 <span className="flex items-center gap-2">
                   <Download className="w-4 h-4" />
@@ -217,7 +217,7 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
               <Button
                 onClick={handleExportFullPDF}
                 disabled={!steps || steps.length === 0 || isExportingPdf}
-                className="h-9 px-4 bg-lilac_ash-400 hover:bg-lilac_ash-500 text-charcoal-800 font-semibold rounded-2xl transition-colors"
+                className="h-9 px-4 bg-gold-400 hover:bg-gold-500 text-black-800 font-semibold rounded-2xl transition-colors"
               >
                 <span className="flex items-center gap-2">
                   <Download className="w-4 h-4" />
@@ -230,7 +230,7 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
 
         {steps && !loading && (
           <div className="text-center">
-            <p className="text-charcoal-700 text-sm">
+            <p className="text-gold-200 text-sm">
               Krok {currentStep + 1} z {steps.length}
             </p>
           </div>
@@ -265,8 +265,8 @@ export function AssemblyPageContent({ modelId }: AssemblyPageContentProps) {
 
         {/* Empty State */}
         {!loading && steps && steps.length === 0 && (
-          <div className="rounded-3xl p-12 bg-lilac_ash-300 text-center">
-            <p className="text-charcoal-700">
+          <div className="rounded-3xl p-12 bg-gold-300 text-center">
+            <p className="text-black-700">
               Brak instrukcji montażu do wyświetlenia
             </p>
           </div>

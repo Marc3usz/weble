@@ -79,20 +79,20 @@ export default function UploadPage() {
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center min-h-screen px-4 py-8">
+    <main className="flex-1 flex items-center justify-center min-h-screen px-4 py-8 bg-gradient-to-br from-black-500 via-black-400 to-black-600">
       <div className="w-full max-w-2xl space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-black-DEFAULT">
+          <h1 className="text-4xl font-bold text-gold-300">
             Prześlij plik STEP
           </h1>
-          <p className="text-charcoal-500">
+          <p className="text-gold-100">
             Przeciągnij i upuść plik lub kliknij aby wybrać
           </p>
         </div>
 
         {/* Upload Card */}
-        <Card className="rounded-3xl p-12 bg-lilac_ash-300 border border-lilac_ash-500">
+        <Card className="rounded-3xl p-12 bg-black-600 border border-gold-600">
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
@@ -100,17 +100,17 @@ export default function UploadPage() {
           >
             {/* Upload Icon */}
             <div className="flex justify-center">
-              <div className="p-4 bg-lilac_ash-500 rounded-3xl">
-                <Upload className="w-12 h-12 text-bright_snow-800" />
+              <div className="p-4 bg-gold-500 rounded-3xl">
+                <Upload className="w-12 h-12 text-black-500" />
               </div>
             </div>
 
             {/* Upload Text */}
             <div className="space-y-2">
-              <p className="text-lg font-semibold text-charcoal-800">
+              <p className="text-lg font-semibold text-gold-300">
                 Przeciągnij plik tutaj lub kliknij aby wybrać
               </p>
-              <p className="text-sm text-charcoal-700">
+              <p className="text-sm text-gold-100">
                 Akceptowane pliki: .step
               </p>
             </div>
@@ -128,7 +128,7 @@ export default function UploadPage() {
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="outline"
-              className="px-6 py-2 rounded-3xl border-lilac_ash-600 text-charcoal-700 bg-lilac_ash-200 hover:bg-lilac_ash-400 hover:border-lilac_ash-700 transition-colors"
+              className="px-6 py-2 rounded-3xl border-gold-500 text-gold-300 bg-black-600 hover:bg-gold-500 hover:text-black-500 hover:border-gold-600 transition-colors"
             >
               Wybierz plik
             </Button>
@@ -137,14 +137,14 @@ export default function UploadPage() {
 
         {/* Selected File Display */}
         {selectedFile && !success && (
-          <Card className="rounded-3xl p-6 bg-lilac_ash-200 border-lilac_ash-500">
+          <Card className="rounded-3xl p-6 bg-black-600 border-gold-600">
             <div className="flex items-center gap-4">
-              <CheckCircle className="w-6 h-6 text-lilac_ash-600 flex-shrink-0" />
+              <CheckCircle className="w-6 h-6 text-gold-500 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-charcoal-800 truncate">
+                <p className="font-semibold text-gold-300 truncate">
                   {selectedFile.name}
                 </p>
-                <p className="text-sm text-charcoal-700">
+                <p className="text-sm text-gold-100">
                   {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
@@ -154,9 +154,9 @@ export default function UploadPage() {
 
         {/* Error Alert */}
         {error && (
-          <Alert className="border-red-200 bg-red-50 rounded-3xl">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
+          <Alert className="border-red-600 bg-red-950 rounded-3xl">
+            <AlertCircle className="h-4 w-4 text-red-400" />
+            <AlertDescription className="text-red-300">
               {error}
             </AlertDescription>
           </Alert>
@@ -164,9 +164,9 @@ export default function UploadPage() {
 
         {/* Success Alert */}
         {success && (
-          <Alert className="border-lilac_ash-500 bg-lilac_ash-300 rounded-3xl">
-            <CheckCircle className="h-4 w-4 text-lilac_ash-700" />
-            <AlertDescription className="text-lilac_ash-800">
+          <Alert className="border-gold-600 bg-black-600 rounded-3xl">
+            <CheckCircle className="h-4 w-4 text-gold-400" />
+            <AlertDescription className="text-gold-300">
               Plik przesłany pomyślnie! Przekierowuję...
             </AlertDescription>
           </Alert>
@@ -177,7 +177,7 @@ export default function UploadPage() {
           <Link href="/">
             <Button
               variant="outline"
-              className="px-8 py-6 rounded-3xl border-lilac_ash-300 text-charcoal-600 hover:text-lilac_ash-600 hover:border-lilac_ash-400 transition-colors"
+              className="px-8 py-6 rounded-3xl border-gold-500 text-gold-300 hover:bg-gold-500 hover:text-black-500 transition-colors"
             >
               ← Powrót
             </Button>
@@ -186,7 +186,7 @@ export default function UploadPage() {
           <Button
             onClick={handleUpload}
             disabled={!selectedFile || loading}
-            className="px-8 py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl disabled:opacity-50 disabled:bg-lilac_ash-300 transition-colors"
+            className="px-8 py-6 bg-gold-500 hover:bg-gold-600 text-black-500 font-semibold rounded-3xl disabled:opacity-50 disabled:bg-gold-300 transition-colors"
           >
             {loading ? (
               <span className="flex items-center gap-2">

@@ -24,10 +24,10 @@ export function SvgViewer({
   return (
     <>
       {/* Trigger Button */}
-      <Button
-        onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-medium rounded-2xl transition-colors"
-      >
+       <Button
+         onClick={() => setIsOpen(true)}
+         className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-black-900 font-medium rounded-2xl transition-colors"
+       >
         {triggerLabel}
       </Button>
 
@@ -41,31 +41,31 @@ export function SvgViewer({
             className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-lilac_ash-200">
-              <h2 className="text-xl font-bold text-black-DEFAULT">{title}</h2>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-lilac_ash-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-charcoal-600" />
-              </button>
-            </div>
+             {/* Header */}
+             <div className="flex items-center justify-between p-6 border-b border-gold-400">
+               <h2 className="text-xl font-bold text-gold-200">{title}</h2>
+               <button
+                 onClick={() => setIsOpen(false)}
+                 className="p-2 hover:bg-gold-100 rounded-full transition-colors"
+               >
+                 <X className="w-5 h-5 text-black-600" />
+               </button>
+             </div>
 
-            {/* Content */}
-            <div className="p-6 flex items-center justify-center bg-bright_snow-600">
-              <div
-                className="w-full"
-                dangerouslySetInnerHTML={{ __html: svgContent }}
-              />
-            </div>
+             {/* Content */}
+             <div className="p-6 flex items-center justify-center bg-black-600">
+               <div
+                 className="w-full"
+                 dangerouslySetInnerHTML={{ __html: svgContent }}
+               />
+             </div>
 
-            {/* Footer */}
-            <div className="p-4 border-t border-lilac_ash-200 flex justify-end">
-              <Button
-                onClick={() => setIsOpen(false)}
-                className="px-6 py-2 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-medium rounded-2xl transition-colors"
-              >
+             {/* Footer */}
+             <div className="p-4 border-t border-gold-400 flex justify-end">
+               <Button
+                 onClick={() => setIsOpen(false)}
+                 className="px-6 py-2 bg-gold-500 hover:bg-gold-600 text-black-900 font-medium rounded-2xl transition-colors"
+               >
                 Zamknij
               </Button>
             </div>

@@ -53,7 +53,7 @@ export function ProgressPageContent({
   };
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen px-4 py-8">
+    <main className="flex-1 flex flex-col min-h-screen px-4 py-8 bg-gradient-to-br from-black-500 via-black-400 to-black-600">
       <div className="w-full max-w-4xl mx-auto space-y-6 flex-1">
         {/* Breadcrumb - Only show when viewer is ready */}
         {showViewer && modelId && (
@@ -70,28 +70,28 @@ export function ProgressPageContent({
           {/* Header */}
           <div className="w-full space-y-8">
             <div className="text-center space-y-4">
-              {!showViewer ? (
-                <>
-                  <h1 className="text-4xl font-bold text-charcoal-800">
-                    Przetwarzanie pliku...
-                  </h1>
-                  <p className="text-charcoal-600">Proszę czekać, może to chwilę potrwać</p>
-                </>
-              ) : (
-                <>
-                  <h1 className="text-4xl font-bold text-charcoal-800">
-                    ✓ Model gotowy
-                  </h1>
-                  <p className="text-charcoal-600">Twój model jest gotowy do przeglądania</p>
-                </>
-              )}
+               {!showViewer ? (
+                 <>
+                   <h1 className="text-4xl font-bold text-gold-300">
+                     Przetwarzanie pliku...
+                   </h1>
+                   <p className="text-gold-100">Proszę czekać, może to chwilę potrwać</p>
+                 </>
+               ) : (
+                 <>
+                   <h1 className="text-4xl font-bold text-gold-300">
+                     ✓ Model gotowy
+                   </h1>
+                   <p className="text-gold-100">Twój model jest gotowy do przeglądania</p>
+                 </>
+               )}
             </div>
         {/* Error State */}
         {isFailed && error && (
           <>
-            <Alert className="border-red-200 bg-red-50 rounded-3xl">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              <AlertDescription className="text-red-800 font-medium">
+            <Alert className="border-red-600 bg-red-950 rounded-3xl">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              <AlertDescription className="text-red-300 font-medium">
                 {error}
               </AlertDescription>
             </Alert>
@@ -99,7 +99,7 @@ export function ProgressPageContent({
             <div className="flex gap-4 justify-center">
               <Button
                 onClick={handleRetry}
-                className="px-8 py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl transition-colors flex items-center gap-2"
+                className="px-8 py-6 bg-gold-500 hover:bg-gold-600 text-black-500 font-semibold rounded-3xl transition-colors flex items-center gap-2"
               >
                 <RotateCcw className="w-4 h-4" />
                 Spróbuj ponownie
@@ -108,7 +108,7 @@ export function ProgressPageContent({
               <Link href="/upload">
                 <Button
                   variant="outline"
-                  className="px-8 py-6 rounded-3xl border-lilac_ash-300 text-charcoal-500"
+                  className="px-8 py-6 rounded-3xl border-gold-500 text-gold-300 hover:bg-gold-500 hover:text-black-500"
                 >
                   Prześlij nowy plik
                 </Button>
@@ -123,16 +123,16 @@ export function ProgressPageContent({
             {/* Progress Bar */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-charcoal-700">
+                <span className="text-sm font-medium text-gold-200">
                   Postęp
                 </span>
-                <Badge variant="secondary" className="rounded-full bg-lilac_ash-300 text-charcoal-800">
+                <Badge variant="secondary" className="rounded-full bg-gold-600 text-black-500">
                   {percentage}%
                 </Badge>
               </div>
               <Progress
                 value={percentage}
-                className="h-3 rounded-full bg-lilac_ash-200"
+                className="h-3 rounded-full bg-black-600"
               />
             </div>
 
@@ -192,7 +192,7 @@ export function ProgressPageContent({
             <div className="grid grid-cols-2 gap-4">
               <Link href={`/parts/${modelId}`}>
                 <Button
-                  className="w-full py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl transition-colors"
+                  className="w-full py-6 bg-gold-500 hover:bg-gold-600 text-black-500 font-semibold rounded-3xl transition-colors"
                 >
                   <Package2 className="w-4 h-4 mr-2" />
                   Zobacz części
@@ -201,7 +201,7 @@ export function ProgressPageContent({
 
               <Link href={`/assembly/${modelId}`}>
                 <Button
-                  className="w-full py-6 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-3xl transition-colors"
+                  className="w-full py-6 bg-gold-500 hover:bg-gold-600 text-black-500 font-semibold rounded-3xl transition-colors"
                 >
                   <Wrench className="w-4 h-4 mr-2" />
                   Instrukcje montażu
@@ -213,7 +213,7 @@ export function ProgressPageContent({
             <Link href="/upload" className="block">
               <Button
                 variant="outline"
-                className="w-full py-4 rounded-3xl border-lilac_ash-300 text-charcoal-500 font-medium"
+                className="w-full py-4 rounded-3xl border-gold-500 text-gold-300 hover:bg-gold-500 hover:text-black-500 font-medium"
               >
                 ← Prześlij nowy plik
               </Button>

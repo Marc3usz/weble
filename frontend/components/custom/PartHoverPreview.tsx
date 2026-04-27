@@ -304,48 +304,48 @@ export function PartHoverPreview({
         width: `${previewWidth}px`,
       }}
     >
-      <Card className="rounded-3xl p-4 bg-bright_snow-800 shadow-xl min-w-[300px]">
-          <div
-            ref={canvasContainerRef}
-            className="w-full h-36 bg-lilac_ash-300 rounded-2xl mb-3 overflow-hidden relative"
-          >
-            {isLoading && !previewReady && <div className="absolute inset-0 h-full w-full animate-pulse bg-lilac_ash-400" />}
-            {!isLoading && previewError && (
-              <div className="absolute inset-0 h-full w-full flex items-center justify-center text-xs text-charcoal-700 px-3 text-center">
-                {previewError}
-              </div>
-            )}
-            {!isLoading && !previewError && !previewReady && (
-              <div className="absolute inset-0 h-full w-full flex items-center justify-center text-xs text-charcoal-700 px-3 text-center">
+       <Card className="rounded-3xl p-4 bg-black-700 shadow-xl min-w-[300px]">
+            <div
+              ref={canvasContainerRef}
+              className="w-full h-36 bg-gold-300 rounded-2xl mb-3 overflow-hidden relative"
+            >
+              {isLoading && !previewReady && <div className="absolute inset-0 h-full w-full animate-pulse bg-gold-400" />}
+             {!isLoading && previewError && (
+               <div className="absolute inset-0 h-full w-full flex items-center justify-center text-xs text-gold-300 px-3 text-center">
+                 {previewError}
+               </div>
+             )}
+             {!isLoading && !previewError && !previewReady && (
+               <div className="absolute inset-0 h-full w-full flex items-center justify-center text-xs text-gold-300 px-3 text-center">
                 Ładowanie podglądu 3D...
               </div>
             )}
           </div>
 
-         {/* Part Details */}
-         <div className="space-y-2">
-           <h4 className="font-semibold text-charcoal-700 text-sm line-clamp-2">
+           {/* Part Details */}
+           <div className="space-y-2">
+             <h4 className="font-semibold text-gold-300 text-sm line-clamp-2">
              {part.name}
            </h4>
 
            {/* Quantity Badge */}
-            <Badge variant="secondary" className="rounded-full bg-lilac_ash-300 text-charcoal-700 text-xs">
+             <Badge variant="secondary" className="rounded-full bg-gold-300 text-black-700 text-xs">
               Ilość: ×{part.quantity}
             </Badge>
 
            {/* Part Type */}
-           {part.part_type && (
-             <div className="text-xs">
-               <span className="font-medium text-charcoal-700">Typ:</span>{" "}
-               <span className="text-charcoal-600">{part.part_type}</span>
-             </div>
-           )}
+            {part.part_type && (
+               <div className="text-xs">
+                 <span className="font-medium text-gold-300">Typ:</span>{" "}
+                 <span className="text-gold-200">{part.part_type}</span>
+               </div>
+             )}
 
           {/* Dimensions */}
-          {part.dimensions && (
-            <div className="text-xs space-y-1">
-              <p className="font-medium text-charcoal-700">Wymiary:</p>
-              <ul className="text-charcoal-600 pl-3">
+            {part.dimensions && (
+              <div className="text-xs space-y-1">
+                <p className="font-medium text-gold-300">Wymiary:</p>
+                <ul className="text-gold-200 pl-3">
                 <li>
                   • Szerokość: {part.dimensions.width.toFixed(2)} mm
                 </li>
@@ -360,10 +360,10 @@ export function PartHoverPreview({
           )}
 
           {/* Volume */}
-          {part.volume && (
-            <div className="text-xs">
-              <span className="font-medium text-charcoal-700">Objętość:</span>{" "}
-              <span className="text-charcoal-600">
+            {part.volume && (
+              <div className="text-xs">
+                <span className="font-medium text-gold-300">Objętość:</span>{" "}
+                <span className="text-gold-200">
                 {part.volume.toFixed(2)} cm³
               </span>
             </div>

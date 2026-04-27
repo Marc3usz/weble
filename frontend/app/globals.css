@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --primary: #a7a2a9;
-  --background: #f8faf9;
-  --foreground: #08090a;
-  --muted: #575a5e;
-  --border: #a7a2a9;
-  --accent: #a7a2a9;
+  --primary: #d4af37;
+  --background: #08090a;
+  --foreground: #d4af37;
+  --muted: #353b42;
+  --border: #d4af37;
+  --accent: #d4af37;
   
   /* Override shadcn defaults for soft, squircle aesthetic */
   --radius: 24px;
@@ -15,7 +15,8 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  background-color: #f8faf9;
+  background-color: #08090a;
+  color: #d4af37;
 }
 
 /* Apply squircles to all interactive elements */
@@ -33,12 +34,12 @@ select,
 /* Override shadcn button defaults */
 button[class*="bg-"] {
   border-radius: 24px !important;
-  box-shadow: 0 2px 8px rgba(8, 9, 10, 0.08);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.15);
   transition: all 200ms ease-out;
 }
 
 button[class*="bg-"]:hover {
-  box-shadow: 0 4px 12px rgba(8, 9, 10, 0.12);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25);
   transform: translateY(-1px);
 }
 
@@ -47,8 +48,8 @@ button[class*="bg-"]:hover {
 .card,
 [role="alert"] {
   border-radius: 24px !important;
-  box-shadow: 0 10px 28px rgba(8, 9, 10, 0.08);
-  background-color: #f6f8f6 !important;
+  box-shadow: 0 10px 28px rgba(212, 175, 55, 0.1);
+  background-color: #1a1a1a !important;
 }
 
 /* Input styling */
@@ -56,9 +57,10 @@ input,
 textarea,
 select {
   border-radius: 16px !important;
-  border: 1px solid #cac7cc !important;
-  background-color: #f8faf9 !important;
-  box-shadow: inset 0 1px 3px rgba(8, 9, 10, 0.04);
+  border: 1px solid #d4af37 !important;
+  background-color: #1a1a1a !important;
+  color: #d4af37 !important;
+  box-shadow: inset 0 1px 3px rgba(212, 175, 55, 0.04);
 }
 
 /* Explosion slider with always visible thumb */
@@ -68,14 +70,14 @@ select {
   width: 100%;
   height: 10px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, #878089 0%, #655f67 100%);
+  background: linear-gradient(90deg, #d4af37 0%, #f7c66f 100%);
   cursor: pointer;
 }
 
 .explosion-slider::-webkit-slider-runnable-track {
   height: 10px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, #878089 0%, #655f67 100%);
+  background: linear-gradient(90deg, #d4af37 0%, #f7c66f 100%);
 }
 
 .explosion-slider::-webkit-slider-thumb {
@@ -84,15 +86,15 @@ select {
   width: 22px;
   height: 22px;
   border-radius: 9999px;
-  background: #222022;
+  background: #d4af37;
   margin-top: -6px;
-  box-shadow: 0 2px 8px rgba(8, 9, 10, 0.35);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.35);
 }
 
 .explosion-slider::-moz-range-track {
   height: 10px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, #878089 0%, #655f67 100%);
+  background: linear-gradient(90deg, #d4af37 0%, #f7c66f 100%);
 }
 
 .explosion-slider::-moz-range-thumb {
@@ -100,22 +102,22 @@ select {
   height: 22px;
   border-radius: 9999px;
   border: 0;
-  background: #222022;
-  box-shadow: 0 2px 8px rgba(8, 9, 10, 0.35);
+  background: #d4af37;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.35);
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: #a7a2a9 !important;
-  box-shadow: inset 0 1px 3px rgba(8, 9, 10, 0.04), 0 0 0 3px rgba(167, 162, 169, 0.1);
+  border-color: #d4af37 !important;
+  box-shadow: inset 0 1px 3px rgba(212, 175, 55, 0.04), 0 0 0 3px rgba(212, 175, 55, 0.1);
 }
 
 /* Badge styling - more prominent */
 [class*="badge"],
 span[class*="rounded-full"] {
   border-radius: 20px !important;
-  background: #cac7cc !important;
+  background: #d4af37 !important;
   border: none !important;
   color: #08090a !important;
 }
@@ -124,8 +126,8 @@ span[class*="rounded-full"] {
 [role="progressbar"],
 [class*="progress"] {
   border-radius: 16px !important;
-  background-color: #dcdadd !important;
-  box-shadow: inset 0 1px 3px rgba(8, 9, 10, 0.04);
+  background-color: #353b42 !important;
+  box-shadow: inset 0 1px 3px rgba(212, 175, 55, 0.04);
 }
 
 /* Smooth transitions */
@@ -136,5 +138,5 @@ span[class*="rounded-full"] {
 /* Remove default focus outline */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(167, 162, 169, 0.2);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
 }

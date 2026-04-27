@@ -44,7 +44,7 @@ export function PartsPageContent({ modelId }: PartsPageContentProps) {
   };
 
   return (
-    <main className="flex-1 flex flex-col min-h-screen px-4 py-4 bg-gradient-to-br from-bright_snow-900 via-bright_snow-700 to-lilac_ash-800">
+     <main className="flex-1 flex flex-col min-h-screen px-4 py-4 bg-gradient-to-br from-black-500 via-black-400 to-black-600">
       <div className="w-full max-w-7xl mx-auto space-y-3 flex-1">
         {/* Breadcrumb Navigation */}
         <Breadcrumb 
@@ -56,14 +56,14 @@ export function PartsPageContent({ modelId }: PartsPageContentProps) {
           actions={
             <>
               <Link href={`/assembly/${modelId}`}>
-                <Button className="h-9 px-4 bg-lilac_ash-600 hover:bg-lilac_ash-700 text-bright_snow-900 font-semibold rounded-2xl transition-colors">
+                 <Button className="h-9 px-4 bg-gold-600 hover:bg-gold-700 text-black-900 font-semibold rounded-2xl transition-colors">
                   🔧 Instrukcje
                 </Button>
               </Link>
 
               <Button
                 onClick={handleExportPDF}
-                className="h-9 px-4 bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold rounded-2xl transition-colors"
+                 className="h-9 px-4 bg-gold-500 hover:bg-gold-600 text-black-900 font-semibold rounded-2xl transition-colors"
               >
                 <span className="flex items-center gap-2">
                   <Download className="w-4 h-4" />
@@ -99,8 +99,8 @@ export function PartsPageContent({ modelId }: PartsPageContentProps) {
 
         {/* Empty State */}
         {!loading && parts && parts.length === 0 && (
-          <div className="rounded-3xl p-12 bg-lilac_ash-300 text-center">
-            <p className="text-charcoal-700">Brak części do wyświetlenia</p>
+          <div className="rounded-3xl p-12 bg-gold-300 text-center">
+             <p className="text-black-700">Brak części do wyświetlenia</p>
           </div>
         )}
       </div>

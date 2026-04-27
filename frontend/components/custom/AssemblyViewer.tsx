@@ -72,27 +72,27 @@ export function AssemblyViewer({
 
       {/* Right: Step Carousel (40% width) */}
       <div className="xl:col-span-1 min-h-0">
-        <Card className="h-full rounded-3xl p-5 bg-bright_snow-700 flex flex-col overflow-y-auto">
+        <Card className="h-full rounded-3xl p-5 bg-black-700 flex flex-col overflow-y-auto">
           {/* Step Header */}
           <div className="mb-4">
-            <h3 className="text-sm font-medium text-charcoal-600 uppercase tracking-wide">
+            <h3 className="text-sm font-medium text-gold-300 uppercase tracking-wide">
               Krok {currentStep.step_number}
             </h3>
-            <h2 className="text-xl font-bold text-black-DEFAULT mt-2 line-clamp-2">
+            <h2 className="text-xl font-bold text-gold-200 mt-2 line-clamp-2">
               {currentStep.title}
             </h2>
           </div>
 
            {/* Step Description */}
            <div className="flex-1 mb-6">
-             <p className="text-sm text-charcoal-600 leading-relaxed">
+              <p className="text-sm text-gold-300 leading-relaxed">
                {currentStep.description}
              </p>
 
              {/* Part Roles if available */}
              {currentStep.part_roles && Object.keys(currentStep.part_roles).length > 0 && (
                <div className="mt-4 space-y-2">
-                 <p className="text-xs font-medium text-charcoal-600 uppercase">
+                  <p className="text-xs font-medium text-gold-300 uppercase">
                    Role części
                  </p>
            <div className="flex flex-wrap gap-2">
@@ -101,7 +101,7 @@ export function AssemblyViewer({
                   key={index}
                   variant="secondary"
                   onClick={() => onSelectPartIndex?.(Number(index))}
-                  className="rounded-full bg-lilac_ash-300 text-charcoal-700 text-xs cursor-pointer hover:bg-lilac_ash-400"
+                   className="rounded-full bg-gold-300 text-black-700 text-xs cursor-pointer hover:bg-gold-400"
                 >
                   {role}
                 </Badge>
@@ -111,8 +111,8 @@ export function AssemblyViewer({
               )}
 
               {currentStep.detail_description && (
-                <div className="mt-4 p-3 rounded-2xl bg-bright_snow-800">
-                  <p className="text-xs text-charcoal-700 leading-relaxed">
+                 <div className="mt-4 p-3 rounded-2xl bg-black-800">
+                   <p className="text-xs text-gold-300 leading-relaxed">
                     {currentStep.detail_description}
                   </p>
                 </div>
@@ -120,8 +120,8 @@ export function AssemblyViewer({
 
               {currentStep.assembly_sequence && currentStep.assembly_sequence.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  <p className="text-xs font-medium text-charcoal-600 uppercase">Sekwencja</p>
-                  <ol className="text-xs text-charcoal-700 space-y-1 list-decimal pl-4">
+                   <p className="text-xs font-medium text-gold-300 uppercase">Sekwencja</p>
+                   <ol className="text-xs text-gold-300 space-y-1 list-decimal pl-4">
                     {currentStep.assembly_sequence.map((item) => (
                       <li key={`sequence-${currentStep.step_number}-${item}`}>{item}</li>
                     ))}
@@ -131,8 +131,8 @@ export function AssemblyViewer({
 
               {currentStep.warnings && currentStep.warnings.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  <p className="text-xs font-medium text-charcoal-600 uppercase">Uwagi</p>
-                  <ul className="text-xs text-charcoal-700 space-y-1 list-disc pl-4">
+                   <p className="text-xs font-medium text-gold-300 uppercase">Uwagi</p>
+                   <ul className="text-xs text-gold-300 space-y-1 list-disc pl-4">
                     {currentStep.warnings.map((item) => (
                       <li key={`warning-${currentStep.step_number}-${item}`}>{item}</li>
                     ))}
@@ -142,8 +142,8 @@ export function AssemblyViewer({
 
               {currentStep.tips && currentStep.tips.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  <p className="text-xs font-medium text-charcoal-600 uppercase">Wskazówki</p>
-                  <ul className="text-xs text-charcoal-700 space-y-1 list-disc pl-4">
+                   <p className="text-xs font-medium text-gold-300 uppercase">Wskazówki</p>
+                   <ul className="text-xs text-gold-300 space-y-1 list-disc pl-4">
                     {currentStep.tips.map((item) => (
                       <li key={`tip-${currentStep.step_number}-${item}`}>{item}</li>
                     ))}
@@ -166,9 +166,9 @@ export function AssemblyViewer({
           {/* Step Counter & Navigation */}
           <div className="space-y-4">
             {/* Progress Bar */}
-            <div className="w-full bg-lilac_ash-300 rounded-full h-2 overflow-hidden">
-              <div
-                className="h-full bg-lilac_ash-500 transition-all duration-300"
+             <div className="w-full bg-gold-300 rounded-full h-2 overflow-hidden">
+                <div
+                   className="h-full bg-gold-500 transition-all duration-300"
                 style={{
                   width: `${((currentStepIndex + 1) / steps.length) * 100}%`,
                 }}
@@ -177,7 +177,7 @@ export function AssemblyViewer({
 
             {/* Step Counter */}
             <div className="text-center">
-              <p className="text-xs text-charcoal-600 font-medium">
+              <p className="text-xs text-gold-300 font-medium">
                 Krok {currentStepIndex + 1} z {steps.length}
               </p>
             </div>
@@ -187,7 +187,7 @@ export function AssemblyViewer({
               <Button
                 onClick={onPreviousStep}
                 disabled={currentStepIndex === 0}
-                className="flex-1 rounded-3xl bg-lilac_ash-200 hover:bg-lilac_ash-300 text-charcoal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-3xl bg-gold-200 hover:bg-gold-300 text-black-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -195,7 +195,7 @@ export function AssemblyViewer({
               <Button
                 onClick={onNextStep}
                 disabled={currentStepIndex === steps.length - 1}
-                className="flex-1 rounded-3xl bg-lilac_ash-500 hover:bg-lilac_ash-600 text-bright_snow-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-3xl bg-gold-500 hover:bg-gold-600 text-black-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>

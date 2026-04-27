@@ -20,7 +20,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body className="min-h-screen flex flex-col bg-bright_snow-900 text-black-DEFAULT antialiased">
+      <body className="min-h-screen flex flex-col bg-black-500 text-gold-100 antialiased">
         {children}
       </body>
     </html>

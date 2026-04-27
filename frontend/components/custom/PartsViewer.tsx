@@ -58,19 +58,19 @@ export function PartsViewer({
           </div>
         </div>
 
-        {actions ? <div className="rounded-3xl bg-lilac_ash-300 p-2">{actions}</div> : null}
+         {actions ? <div className="rounded-3xl bg-gold-300 p-2">{actions}</div> : null}
         
-        {/* Canvas Controls */}
-        <div className="flex gap-2 px-3 py-2 bg-lilac_ash-300 rounded-3xl">
-          <p className="text-xs text-charcoal-700 flex-1">
+         {/* Canvas Controls */}
+         <div className="flex gap-2 px-3 py-2 bg-gold-300 rounded-3xl">
+           <p className="text-xs text-black-700 flex-1">
             💡 Obróć: przeciągnij | Powiększ: scroll | Reset: 2x klik
           </p>
         </div>
       </div>
 
-      {/* Right: Parts List (40% width) */}
-      <div className="xl:col-span-1 min-h-0">
-        <div className="h-full rounded-3xl bg-bright_snow-700 p-3 overflow-y-auto">
+       {/* Right: Parts List (40% width) */}
+       <div className="xl:col-span-1 min-h-0">
+         <div className="h-full rounded-3xl bg-black-700 p-3 overflow-y-auto">
           <div className="space-y-3">
             {parts.map((part, index) => (
               <PartListItem
@@ -140,39 +140,39 @@ function PartListItem({
           onHoverRectChange(null);
         }}
         className={cn(
-          "p-4 cursor-pointer transition-all rounded-3xl",
-          isSelected
-            ? "bg-lilac_ash-400 shadow-md"
-            : isHovered
-            ? "bg-lilac_ash-300 shadow-lg"
-            : "bg-bright_snow-800 hover:bg-bright_snow-700"
-        )}
+           "p-4 cursor-pointer transition-all rounded-3xl",
+           isSelected
+             ? "bg-gold-400 shadow-md"
+             : isHovered
+             ? "bg-gold-300 shadow-lg"
+             : "bg-black-700 hover:bg-black-600"
+         )}
       >
         <div className="flex items-start gap-3">
-          {/* Part Icon/Number */}
-          <div className={cn(
-            "w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 text-sm font-semibold",
-            isSelected
-              ? "bg-lilac_ash-500 text-bright_snow-800"
-              : isHovered
-              ? "bg-lilac_ash-400 text-bright_snow-900"
-              : "bg-lilac_ash-200 text-lilac_ash-600"
-          )}>
+           {/* Part Icon/Number */}
+           <div className={cn(
+             "w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 text-sm font-semibold",
+             isSelected
+               ? "bg-gold-500 text-black-800"
+               : isHovered
+               ? "bg-gold-400 text-black-900"
+               : "bg-gold-200 text-gold-700"
+           )}>
             {index + 1}
           </div>
 
           {/* Part Info */}
           <div className="flex-1 min-w-0">
-            <h4 className={cn(
-              "text-sm font-semibold line-clamp-1",
-              isSelected ? "text-lilac_ash-900" : "text-charcoal-700"
-            )}>
+             <h4 className={cn(
+               "text-sm font-semibold line-clamp-1",
+               isSelected ? "text-gold-100" : "text-gold-300"
+             )}>
               {part.name}
             </h4>
-            <p className={cn(
-              "text-xs mt-1",
-              isSelected ? "text-lilac_ash-700" : "text-charcoal-600"
-            )}>
+             <p className={cn(
+               "text-xs mt-1",
+               isSelected ? "text-gold-200" : "text-gold-300"
+             )}>
               ×{part.quantity}
             </p>
           </div>
