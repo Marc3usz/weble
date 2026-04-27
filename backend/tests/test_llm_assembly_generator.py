@@ -483,6 +483,40 @@ class TestFallbackBehavior:
             # Should handle gracefully without raising
             assert llm_service is not None
 
+    @pytest.mark.asyncio
+    async def test_process_prefers_prebuilt_steps_when_llm_is_unavailable(
+        self, llm_service, sample_parts, sample_drawings
+    ):
+        """When no API call is possible, the service should preserve the provided step skeleton."""
+        llm_service.api_key = ""
+        prebuilt_steps = [
+            AssemblyStep(
+                step_number=1,
+                title="Assemble cabinet frame",
+                description="Position the base panel and attach the side panels.",
+                detail_description="Keep the side panels flush with the base before tightening.",
+                part_indices=[0, 2],
+                part_roles={0: "base panel", 2: "side panel"},
+                context_part_indices=[],
+                assembly_sequence=["Position base panel", "Attach side panel"],
+                warnings=["Check squareness before tightening."],
+                tips=["Tighten in stages."],
+                duration_minutes=6,
+                is_llm_generated=False,
+            )
+        ]
+
+        result = await llm_service.process(
+            sample_parts,
+            sample_drawings,
+            tone=AssemblyTone.TECHNICAL,
+            base_steps=prebuilt_steps,
+        )
+
+        assert result[0].title == "Assemble cabinet frame"
+        assert result[0].part_roles[0] == "base panel"
+        assert result[0].part_indices == [0, 2]
+
 
 # ============================================================================
 # INTEGRATION TESTS (2 tests - basic LLM flow)

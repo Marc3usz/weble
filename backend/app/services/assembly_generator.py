@@ -211,6 +211,20 @@ class AssemblyGeneratorService(PipelineStage):
         steps: List[AssemblyStep] = []
         current_step = 1
 
+        semantic_panel_steps = self._generate_semantic_panel_steps(
+            parts,
+            panel_indices,
+            connector_indices,
+            tone,
+        )
+        if semantic_panel_steps:
+            steps.extend(semantic_panel_steps)
+            consumed_indices = {idx for step in steps for idx in step.part_indices}
+            connector_indices = [idx for idx in connector_indices if idx not in consumed_indices]
+            other_indices = [idx for idx in other_indices if idx not in consumed_indices]
+            current_step = len(steps) + 1
+            frame_indices = [idx for idx in panel_indices if idx not in consumed_indices]
+
         # Single part special case
         if len(parts) == 1:
             return [
@@ -397,6 +411,257 @@ class AssemblyGeneratorService(PipelineStage):
             step.svg_diagram = self._compose_step_svg_from_drawings(step, drawings)
 
         return steps
+
+    def _generate_semantic_panel_steps(
+        self,
+        parts: List[Part],
+        panel_indices: List[int],
+        connector_indices: List[int],
+        tone: AssemblyTone,
+    ) -> List[AssemblyStep]:
+        """Create a more furniture-like panel sequence when enough panels are present."""
+        if len(panel_indices) < 4:
+            return []
+
+        role_map = self._infer_panel_roles(parts, panel_indices)
+        if role_map.get("base") is None or not role_map.get("sides"):
+            return []
+
+        steps: List[AssemblyStep] = []
+        step_number = 1
+
+        frame_active = [role_map["base"], *role_map["sides"][:2]]
+        frame_active = list(dict.fromkeys(frame_active))
+        steps.append(
+            AssemblyStep(
+                step_number=step_number,
+                title="Assemble cabinet frame",
+                description=self._build_semantic_step_description(
+                    "Position the base panel and attach the side panels to establish the main frame.",
+                    frame_active,
+                    role_map["labels"],
+                ),
+                detail_description=self._build_semantic_step_detail(
+                    parts,
+                    frame_active,
+                    role_map["labels"],
+                    "Keep the side panel edges flush with the base before tightening the first fasteners.",
+                ),
+                part_indices=frame_active,
+                part_roles={idx: role_map["labels"][idx] for idx in frame_active},
+                context_part_indices=[],
+                assembly_sequence=[
+                    "Position base panel",
+                    "Align side panels",
+                    "Secure frame corners",
+                ],
+                warnings=self._get_step_warnings(tone, "frame"),
+                tips=self._get_step_tips(tone, "frame"),
+                svg_diagram=self._simple_step_svg("Frame", frame_active),
+                duration_minutes=8,
+                confidence_score=0.8,
+                is_llm_generated=False,
+            )
+        )
+        step_number += 1
+
+        upper_active = [*role_map.get("top", []), *role_map.get("shelves", [])]
+        if upper_active:
+            upper_active = list(dict.fromkeys(upper_active))
+            steps.append(
+                AssemblyStep(
+                    step_number=step_number,
+                    title="Install upper and internal panels",
+                    description=self._build_semantic_step_description(
+                        "Fit the upper or internal panels into the frame while keeping the cabinet square.",
+                        upper_active,
+                        role_map["labels"],
+                    ),
+                    detail_description=self._build_semantic_step_detail(
+                        parts,
+                        upper_active,
+                        role_map["labels"],
+                        "Seat each panel fully against the frame before moving to the next panel.",
+                    ),
+                    part_indices=upper_active,
+                    part_roles={idx: role_map["labels"][idx] for idx in upper_active},
+                    context_part_indices=frame_active.copy(),
+                    assembly_sequence=["Place panel", "Check alignment", "Secure connection"],
+                    warnings=self._get_step_warnings(tone, "remaining"),
+                    tips=self._get_step_tips(tone, "remaining"),
+                    svg_diagram=self._simple_step_svg("Panels", upper_active),
+                    duration_minutes=6,
+                    confidence_score=0.8,
+                    is_llm_generated=False,
+                )
+            )
+            step_number += 1
+
+        back_panel = role_map.get("back")
+        if back_panel is not None:
+            context = [idx for step in steps for idx in step.part_indices]
+            steps.append(
+                AssemblyStep(
+                    step_number=step_number,
+                    title="Install back panel",
+                    description=self._build_semantic_step_description(
+                        "Square the cabinet frame, then attach the back panel to lock the geometry in place.",
+                        [back_panel],
+                        role_map["labels"],
+                    ),
+                    detail_description=self._build_semantic_step_detail(
+                        parts,
+                        [back_panel],
+                        role_map["labels"],
+                        "Confirm diagonal alignment before fixing the back panel along the rear edges.",
+                    ),
+                    part_indices=[back_panel],
+                    part_roles={back_panel: role_map["labels"][back_panel]},
+                    context_part_indices=context,
+                    assembly_sequence=["Square frame", "Place back panel", "Fix rear perimeter"],
+                    warnings=self._get_step_warnings(tone, "remaining"),
+                    tips=self._get_step_tips(tone, "remaining"),
+                    svg_diagram=self._simple_step_svg("Back", [back_panel]),
+                    duration_minutes=5,
+                    confidence_score=0.85,
+                    is_llm_generated=False,
+                )
+            )
+            step_number += 1
+
+        if connector_indices:
+            connector_labels = {
+                idx: self._role_for_part(parts[idx], "fastener set") for idx in connector_indices
+            }
+            context = [idx for step in steps for idx in step.part_indices]
+            steps.append(
+                AssemblyStep(
+                    step_number=step_number,
+                    title="Final fastening pass",
+                    description=self._build_semantic_step_description(
+                        "Apply the remaining fasteners after the panel set is aligned.",
+                        connector_indices,
+                        connector_labels,
+                    ),
+                    detail_description=self._build_semantic_step_detail(
+                        parts,
+                        connector_indices,
+                        connector_labels,
+                        "Tighten the fasteners in stages so the frame remains square while the joints are fully seated.",
+                    ),
+                    part_indices=connector_indices,
+                    part_roles=connector_labels,
+                    context_part_indices=context,
+                    assembly_sequence=[
+                        "Locate fasteners",
+                        "Tighten in sequence",
+                        "Verify joint preload",
+                    ],
+                    warnings=self._get_step_warnings(tone, "hardware"),
+                    tips=self._get_step_tips(tone, "hardware"),
+                    svg_diagram=self._simple_step_svg("Fasteners", connector_indices),
+                    duration_minutes=5,
+                    confidence_score=0.8,
+                    is_llm_generated=False,
+                )
+            )
+
+        return steps
+
+    def _infer_panel_roles(self, parts: List[Part], panel_indices: List[int]) -> dict:
+        """Infer semantic roles for furniture-like panel sets."""
+        panel_infos = []
+        for idx in panel_indices:
+            dims = parts[idx].dimensions or {}
+            dims_sorted = sorted(
+                [
+                    float(dims.get("width", 0)),
+                    float(dims.get("height", 0)),
+                    float(dims.get("depth", 0)),
+                ],
+                reverse=True,
+            )
+            major = dims_sorted[0]
+            mid = dims_sorted[1]
+            thickness = dims_sorted[2]
+            area = major * mid
+            panel_infos.append(
+                {
+                    "idx": idx,
+                    "major": major,
+                    "mid": mid,
+                    "thickness": thickness,
+                    "area": area,
+                }
+            )
+
+        panel_infos.sort(key=lambda item: item["area"], reverse=True)
+        labels = {item["idx"]: "panel" for item in panel_infos}
+
+        back_panel = None
+        if len(panel_infos) >= 4:
+            thinnest = min(panel_infos, key=lambda item: item["thickness"])
+            second_thickness = sorted(item["thickness"] for item in panel_infos)[1]
+            max_area = panel_infos[0]["area"]
+            if (
+                thinnest["thickness"] < second_thickness * 0.5
+                and thinnest["area"] >= max_area * 0.55
+            ):
+                back_panel = thinnest["idx"]
+                labels[back_panel] = "back panel"
+                panel_infos = [item for item in panel_infos if item["idx"] != back_panel]
+
+        if not panel_infos:
+            return {"labels": labels, "sides": [], "top": [], "shelves": []}
+
+        base_idx = panel_infos[0]["idx"]
+        labels[base_idx] = "base panel"
+
+        remaining = panel_infos[1:]
+        side_candidates = [item["idx"] for item in remaining[:2]]
+        for idx in side_candidates:
+            labels[idx] = "side panel"
+
+        remainder = [item["idx"] for item in remaining if item["idx"] not in side_candidates]
+        top_panel = remainder[:1]
+        if top_panel:
+            labels[top_panel[0]] = "top panel"
+
+        shelves = remainder[1:]
+        for idx in shelves:
+            labels[idx] = "shelf panel"
+
+        return {
+            "labels": labels,
+            "base": base_idx,
+            "sides": side_candidates,
+            "top": top_panel,
+            "shelves": shelves,
+            "back": back_panel,
+        }
+
+    @staticmethod
+    def _build_semantic_step_description(
+        base: str, indices: List[int], role_map: dict[int, str]
+    ) -> str:
+        labels = [role_map.get(idx, str(idx)) for idx in indices]
+        return f"{base} Czesci w tym kroku: {', '.join(labels)}."
+
+    def _build_semantic_step_detail(
+        self,
+        parts: List[Part],
+        indices: List[int],
+        role_map: dict[int, str],
+        base: str,
+    ) -> str:
+        details = []
+        for idx in indices:
+            if 0 <= idx < len(parts):
+                dims = parts[idx].dimensions or {}
+                details.append(
+                    f"{role_map.get(idx, parts[idx].id)}: {dims.get('width', 0):.0f}×{dims.get('height', 0):.0f}×{dims.get('depth', 0):.0f}"
+                )
+        return f"{base} {'; '.join(details)}."
 
     # =========================================================================
     # TONE-SPECIFIC TEXT GENERATION

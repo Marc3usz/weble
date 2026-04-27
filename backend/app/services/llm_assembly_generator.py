@@ -116,6 +116,8 @@ class LLMAssemblyGeneratorService:
 
         # Fallback to rules-based generation
         logger.info("Using rule-based assembly generation")
+        if base_steps:
+            return self._reuse_prebuilt_steps(base_steps)
         return await self._generate_rules_based_instructions(parts, drawings, tone)
 
     # =========================================================================
@@ -346,14 +348,14 @@ Produce valid JSON that matches the specification exactly.
   "steps": [
     {
       "step_number": 1,
-      "title": "Snap the frame pieces together",
-      "description": "Connect the left and right frame sides",
-      "detail_description": "Take the two main frame pieces and align the connecting slots. They'll click together with a satisfying snap!",
-      "part_indices": [0, 1],
-      "part_roles": {"0": "left frame", "1": "right frame"},
-      "assembly_sequence": ["Align slots", "Press together"],
-      "warnings": [],
-      "tips": ["Make sure the slots face each other before pressing"],
+      "title": "Assemble the side frame",
+      "description": "Align the side panel with the base panel and secure the first joint.",
+      "detail_description": "Keep the side panel flush with the base reference edge, then seat the connector before applying final tightening.",
+      "part_indices": [0, 1, 2],
+      "part_roles": {"0": "base panel", "1": "side panel", "2": "connector set"},
+      "assembly_sequence": ["Position base panel", "Align side panel", "Seat connector", "Tighten lightly"],
+      "warnings": ["Confirm that the two panels remain square before tightening fully."],
+      "tips": ["Use the panel edges as the alignment reference for the first joint."],
       "duration_minutes": 3
     }
   ]
@@ -382,14 +384,14 @@ Produce valid JSON that matches the specification exactly.
   "steps": [
     {
       "step_number": 1,
-      "title": "Connect the two frame sides (super easy!)",
-      "description": "Link the left and right frame pieces together",
-      "detail_description": "Find the two big frame pieces (left and right). Look for the connecting slots on each piece - they look like grooves. Carefully push them together until they click. Don't force it!",
-      "part_indices": [0, 1],
-      "part_roles": {"0": "left side frame", "1": "right side frame"},
-      "assembly_sequence": ["Find the slots", "Align the pieces", "Gently press together"],
-      "warnings": ["Be careful not to pinch fingers when pressing"],
-      "tips": ["If it's hard to push, check that the slots are facing each other"],
+      "title": "Attach the first side panel",
+      "description": "Place the side panel against the base panel and keep both edges aligned.",
+      "detail_description": "Support the side panel so it stays vertical, then insert the connector and tighten only enough to hold the joint while you check alignment.",
+      "part_indices": [0, 1, 2],
+      "part_roles": {"0": "base panel", "1": "side panel", "2": "connector set"},
+      "assembly_sequence": ["Place base panel", "Align side panel", "Insert connector", "Tighten lightly"],
+      "warnings": ["Do not force the connector if the panel edges are not flush."],
+      "tips": ["Check the top and bottom edges before moving to the next panel."],
       "duration_minutes": 3
     }
   ]
@@ -423,7 +425,7 @@ Produce valid JSON that matches the specification exactly.
                     "content": prompt,
                 }
             ],
-            "temperature": 0.7,
+            "temperature": 0.2,
             "top_p": 0.9,
             "max_tokens": self.max_tokens,
         }
@@ -585,6 +587,31 @@ Produce valid JSON that matches the specification exactly.
             confidence_score=step_data.get("confidence_score", 0.9),
             is_llm_generated=True,
         )
+
+    def _reuse_prebuilt_steps(self, base_steps: List[AssemblyStep]) -> List[AssemblyStep]:
+        """Preserve a precomputed assembly plan when LLM enrichment is unavailable."""
+        reused_steps: List[AssemblyStep] = []
+        for step in base_steps:
+            reused_steps.append(
+                AssemblyStep(
+                    step_number=step.step_number,
+                    title=step.title,
+                    description=step.description,
+                    detail_description=step.detail_description,
+                    part_indices=step.part_indices.copy(),
+                    part_roles=dict(step.part_roles),
+                    context_part_indices=step.context_part_indices.copy(),
+                    svg_diagram=step.svg_diagram,
+                    exploded_view_svg=step.exploded_view_svg,
+                    duration_minutes=step.duration_minutes,
+                    assembly_sequence=step.assembly_sequence.copy(),
+                    warnings=step.warnings.copy(),
+                    tips=step.tips.copy(),
+                    confidence_score=max(step.confidence_score, 0.75),
+                    is_llm_generated=False,
+                )
+            )
+        return reused_steps
 
     # =========================================================================
     # FALLBACK: RULE-BASED GENERATION

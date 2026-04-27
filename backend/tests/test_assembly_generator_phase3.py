@@ -83,6 +83,86 @@ def sample_drawings(sample_parts):
     ]
 
 
+@pytest.fixture
+def furniture_parts():
+    """Create a furniture-like panel set to validate assembly semantics."""
+    return [
+        Part(
+            id="BASE",
+            original_index=0,
+            part_type=PartType.PANEL,
+            quantity=1,
+            volume=5760000,
+            dimensions={"width": 800, "height": 400, "depth": 18},
+            centroid=[0, 0, 0],
+            surface_area=0,
+            group_id="BASE",
+        ),
+        Part(
+            id="LEFT",
+            original_index=1,
+            part_type=PartType.PANEL,
+            quantity=1,
+            volume=5184000,
+            dimensions={"width": 720, "height": 400, "depth": 18},
+            centroid=[0, 0, 0],
+            surface_area=0,
+            group_id="LEFT",
+        ),
+        Part(
+            id="RIGHT",
+            original_index=2,
+            part_type=PartType.PANEL,
+            quantity=1,
+            volume=5184000,
+            dimensions={"width": 720, "height": 400, "depth": 18},
+            centroid=[0, 0, 0],
+            surface_area=0,
+            group_id="RIGHT",
+        ),
+        Part(
+            id="TOP",
+            original_index=3,
+            part_type=PartType.PANEL,
+            quantity=1,
+            volume=5760000,
+            dimensions={"width": 800, "height": 400, "depth": 18},
+            centroid=[0, 0, 0],
+            surface_area=0,
+            group_id="TOP",
+        ),
+        Part(
+            id="BACK",
+            original_index=4,
+            part_type=PartType.PANEL,
+            quantity=1,
+            volume=1638000,
+            dimensions={"width": 780, "height": 700, "depth": 3},
+            centroid=[0, 0, 0],
+            surface_area=0,
+            group_id="BACK",
+        ),
+        Part(
+            id="SCREWS",
+            original_index=5,
+            part_type=PartType.FASTENER,
+            quantity=12,
+            volume=120,
+            dimensions={"width": 4, "height": 4, "depth": 40},
+            centroid=[0, 0, 0],
+            surface_area=0,
+            group_id="SCREWS",
+        ),
+    ]
+
+
+@pytest.fixture
+def furniture_drawings(furniture_parts):
+    return [
+        SvgDrawing(part_id=part.id, svg_content=f"<svg>{part.id}</svg>") for part in furniture_parts
+    ]
+
+
 # ============================================================================
 # RULES-BASED TESTS (Always work, no API dependency)
 # ============================================================================
@@ -175,6 +255,27 @@ class TestAssemblyGeneratorRulesBased:
         """Test that rules-based steps are marked as not LLM-generated."""
         result = await assembly_generator_no_llm.process(sample_parts, sample_drawings)
         assert all(not step.is_llm_generated for step in result)
+
+    @pytest.mark.asyncio
+    async def test_rules_based_furniture_flow_uses_semantic_panel_roles(
+        self, assembly_generator_no_llm, furniture_parts, furniture_drawings
+    ):
+        """Furniture-like models should start with a meaningful frame sequence."""
+        result = await assembly_generator_no_llm.process(
+            furniture_parts, furniture_drawings, tone=AssemblyTone.TECHNICAL
+        )
+
+        assert len(result) >= 3
+
+        first_roles = " ".join(result[0].part_roles.values()).lower()
+        assert "base panel" in first_roles
+        assert "side panel" in first_roles
+
+        back_panel_steps = [
+            step for step in result if "back panel" in " ".join(step.part_roles.values()).lower()
+        ]
+        assert back_panel_steps
+        assert back_panel_steps[0].step_number > result[0].step_number
 
 
 # ============================================================================
