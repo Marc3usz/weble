@@ -410,7 +410,9 @@ export function mapPartsToSolidIndices(
       selected.push(fallback);
     }
 
-    selected.forEach((s) => unassigned.delete(s));
+    selected.forEach((s) => {
+      unassigned.delete(s);
+    });
     result.set(partIndex, selected);
   });
 
@@ -482,7 +484,7 @@ export function createSolidMeshes(
 
     if (!validGeometry) {
       solidGeometry.dispose();
-      return;
+      solidGeometry = buildBoundingBoxFallbackGeometry(solid);
     }
 
     const material = new THREE.MeshPhongMaterial({
@@ -504,6 +506,24 @@ export function createSolidMeshes(
   });
 
   return meshes;
+}
+
+function buildBoundingBoxFallbackGeometry(solid: Solid): THREE.BufferGeometry {
+  const geometry = new THREE.BoxGeometry(
+    Math.max(Math.abs(solid.bounding_box.max[0] - solid.bounding_box.min[0]), 0.001),
+    Math.max(Math.abs(solid.bounding_box.max[1] - solid.bounding_box.min[1]), 0.001),
+    Math.max(Math.abs(solid.bounding_box.max[2] - solid.bounding_box.min[2]), 0.001)
+  );
+
+  const center = new THREE.Vector3(
+    (solid.bounding_box.min[0] + solid.bounding_box.max[0]) / 2,
+    (solid.bounding_box.min[1] + solid.bounding_box.max[1]) / 2,
+    (solid.bounding_box.min[2] + solid.bounding_box.max[2]) / 2
+  );
+  geometry.translate(center.x, center.y, center.z);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
 }
 
 function buildConnectedComponentGeometries(

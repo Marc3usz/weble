@@ -237,7 +237,7 @@ export function GeometryViewer({
   modelId,
   onLoad,
   onError,
-  explosionValue = 0,
+  explosionValue = 42,
   selectedPartId,
   selectedPartIds,
 }: GeometryViewerProps) {
@@ -278,7 +278,7 @@ export function GeometryViewer({
         return saved;
       }
     }
-    return "perspective";
+    return "ortho";
   });
 
   const persistOrbitMode = (mode: "fixed" | "free") => {
